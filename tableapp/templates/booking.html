@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking for {{ table_name }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Flatpickr CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+</head>
+<body class="bg-red-50">
+    <h1 class="text-center text-3xl font-bold mb-8">จองโต๊ะ {{ table_name }}</h1>
+
+    <div class="max-w-md mx-auto bg-white p-6 rounded-lg shadow-lg">
+        <form action="" method="POST">
+            {% csrf_token %}
+            <label for="date" class="block text-gray-700">เลือกวันที่:</label>
+            <input type="date" id="date" name="date" class="w-full border border-gray-300 p-2 rounded mt-2 mb-4">
+
+            <label for="time" class="block text-gray-700">เลือกเวลา:</label>
+            <input type="time" id="time" name="time" class="w-full border border-gray-300 p-2 rounded mt-2 mb-4">
+
+            <button type="submit" class="w-full bg-blue-500 text-white p-2 rounded">จองโต๊ะ</button>
+        </form>
+    </div>
+
+    <!-- Flatpickr JS -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script>
+        // ใช้ Flatpickr เพื่อบังคับการแสดงผลเวลาเป็น 24 ชั่วโมง
+        flatpickr("#time", {
+            enableTime: true,
+            noCalendar: true,
+            dateFormat: "H:i", // แสดงผลในรูปแบบ 24 ชั่วโมง
+            time_24hr: true // ใช้เวลาแบบ 24 ชั่วโมง
+        });
+    </script>
+</body>
+</html>
