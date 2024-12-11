@@ -129,6 +129,8 @@ STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # settings.py
+PASSWORD_RESET_TIMEOUT = 86400  # 1 วัน
+
 
 # เพิ่มการตั้งค่าสำหรับการเข้าสู่ระบบ
 LOGIN_REDIRECT_URL = '/table-status/'  

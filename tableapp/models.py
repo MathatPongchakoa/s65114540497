@@ -35,11 +35,11 @@ class Booking(models.Model):
 
 class Menu(models.Model):
     CATEGORY_CHOICES = [
-        ('recommend', 'เมนูแนะนำ'),
-        ('tomyam', 'ต้ม'),
-        ('pad', 'ผัด'),
-        ('kang', 'แกง'),
-        ('tod','ทอด'),
+        ('เมนูแนะนำ', 'เมนูแนะนำ'),
+        ('ต้ม', 'ต้ม'),
+        ('ผัด', 'ผัด'),
+        ('แกง', 'แกง'),
+        ('ทอด','ทอด'),
     ]
 
     food_name = models.CharField(max_length=100)  # ชื่ออาหาร

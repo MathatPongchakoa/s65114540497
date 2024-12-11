@@ -11,6 +11,10 @@ from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_decode
 from django.utils.encoding import force_str
 from django.contrib.auth import update_session_auth_hash
+from django.core.exceptions import ValidationError
+from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth import logout
+from django.views.decorators.cache import never_cache
 
 def table_status_view(request):
     table_data = Table.objects.all()
@@ -105,8 +109,10 @@ def login_view(request):
 
     return render(request, 'login.html')
 
+@never_cache
 def logout_view(request):
-    return redirect('login')  
+    logout(request)
+    return redirect('login')
 
 def register_view(request):
     if request.method == 'POST':
@@ -147,34 +153,66 @@ def register_view(request):
 
 
 def password_reset_confirm_view(request, uidb64, token):
-    if request.method == 'POST':
-        password1 = request.POST.get('new_password1')
-        password2 = request.POST.get('new_password2')
+    print(f"UID: {uidb64}, Token: {token}")
 
-        if password1 != password2:
-            return render(request, 'password_reset_confirm.html', {'error': "Passwords do not match."})
+    User = get_user_model()  # ใช้ CustomUser แทน User เริ่มต้น
 
-        try:
-            uid = force_str(urlsafe_base64_decode(uidb64))
-            user = User.objects.get(pk=uid)
+    if request.user.is_authenticated:
+        print("User is logged in, logging out...")
+        logout(request)
 
-            if default_token_generator.check_token(user, token):
+    try:
+        uid = force_str(urlsafe_base64_decode(uidb64))
+        user = User.objects.get(pk=uid)  # ใช้ CustomUser
+        print(f"User: {user.username}")
+
+        if not default_token_generator.check_token(user, token):
+            print("Token is invalid or expired")
+            return render(request, 'password_reset_confirm.html', {
+                'error': "The reset link is invalid or expired.",
+                'uidb64': uidb64,
+                'token': token
+            })
+
+        if request.method == 'POST':
+            password1 = request.POST.get('new_password1')
+            password2 = request.POST.get('new_password2')
+
+            if password1 != password2:
+                print("Passwords do not match")
+                return render(request, 'password_reset_confirm.html', {
+                    'error': "Passwords do not match.",
+                    'uidb64': uidb64,
+                    'token': token
+                })
+
+            try:
+                validate_password(password1, user)
                 user.set_password(password1)
                 user.save()
-                update_session_auth_hash(request, user)  # ให้ผู้ใช้ยังล็อกอินอยู่
+                print("Password reset successful")
+                update_session_auth_hash(request, user)
                 return redirect('login')
-            else:
-                return render(request, 'password_reset_confirm.html', {'error': "The reset link is invalid or expired."})
+            except ValidationError as e:
+                print(f"Password validation failed: {e.messages}")
+                return render(request, 'password_reset_confirm.html', {
+                    'error': e.messages,
+                    'uidb64': uidb64,
+                    'token': token
+                })
+    except Exception as e:
+        print(f"Error during password reset: {e}")
+        return render(request, 'password_reset_confirm.html', {
+            'error': "Invalid link.",
+            'uidb64': uidb64,
+            'token': token
+        })
 
-        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
-            return render(request, 'password_reset_confirm.html', {'error': "Invalid link."})
+    return render(request, 'password_reset_confirm.html', {
+        'uidb64': uidb64,
+        'token': token
+    })
 
-    return render(request, 'password_reset_confirm.html', {'uidb64': uidb64, 'token': token})
-
-def password_reset_confirm_view(request, uidb64, token):
-    print(f"UID: {uidb64}, Token: {token}")
-    context = {'uidb64': uidb64, 'token': token}
-    return render(request, 'password_reset_confirm.html', context)
 
 
 @login_required(login_url='login')
@@ -183,6 +221,6 @@ def my_bookings_view(request):
     return render(request, 'my_bookings.html', {'bookings': user_bookings})
 
 def menu_view(request):
-    category = request.GET.get('category', 'recommend')
+    category = request.GET.get('category', 'เมนูแนะนำ')
     menus = Menu.objects.filter(category=category)
     return render(request, 'menu.html', {'menus': menus, 'category': category})

@@ -56,17 +56,22 @@ class Command(BaseCommand):
                 self.stdout.write(f"Created table: {table_name}")
             else:
                 self.stdout.write(f"Table already exists: {table_name}")
+       
+       # แผ่นงานสำหรับ Booking
 
-        # แผ่นงานสำหรับ Booking
         booking_sheet = wb['Booking']
         for row in booking_sheet.iter_rows(min_row=2, values_only=True):
             booking_id, table_id, booking_date, booking_time, user_id = row
             self.stdout.write(f"Processing Booking row: {row}")
+
+            # ตรวจสอบวันที่
             try:
                 booking_date = datetime.strptime(str(booking_date), '%Y/%m/%d').date()
             except ValueError as e:
                 self.stdout.write(f"Invalid booking date format for booking ID {booking_id}. Skipping... Error: {e}")
                 continue
+
+            # ตรวจสอบเวลา
             try:
                 if isinstance(booking_time, datetime):
                     booking_time = booking_time.time()
@@ -77,15 +82,37 @@ class Command(BaseCommand):
             except ValueError as e:
                 self.stdout.write(f"Invalid booking time format for booking ID {booking_id}. Skipping... Error: {e}")
                 continue
+
+            # ค้นหา Table
             table = Table.objects.filter(id=table_id).first()
             if not table:
                 self.stdout.write(f"Table ID {table_id} not found. Skipping booking.")
                 continue
+
+            # ตรวจสอบสถานะของโต๊ะ
+            if table.table_status == 'ว่าง':
+                self.stdout.write(f"Skipping booking ID {booking_id} because table {table.table_name} is available (ว่าง).")
+                continue
+
+            # ตรวจสอบว่ามีการจองอยู่แล้วหรือไม่
+            existing_booking = Booking.objects.filter(
+                table=table,
+                booking_date=booking_date,
+                booking_time=booking_time
+            ).first()
+
+            if existing_booking:
+                self.stdout.write(f"Skipping booking ID {booking_id} because a booking already exists for table {table.table_name} at {booking_date} {booking_time}.")
+                continue
+
+            # ค้นหา User
             user = None
             if user_id:
                 user = CustomUser.objects.filter(id=user_id).first()
                 if not user:
                     self.stdout.write(f"User ID {user_id} not found. Skipping booking ID {booking_id}.")
+
+            # สร้างข้อมูลการจอง
             booking_instance, created = Booking.objects.get_or_create(
                 id=booking_id,
                 defaults={
@@ -99,6 +126,8 @@ class Command(BaseCommand):
                 self.stdout.write(f"Created booking ID {booking_id} for table {table.table_name}")
             else:
                 self.stdout.write(f"Booking ID {booking_id} already exists.")
+
+
 
         # แผ่นงานสำหรับ Menu
         menu_sheet = wb['Menu']
