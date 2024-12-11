@@ -31,12 +31,25 @@ class Booking(models.Model):
 
     def __str__(self):
         return f"Booking for {self.table} on {self.booking_date} at {self.booking_time}"
+    
 
+class Menu(models.Model):
+    CATEGORY_CHOICES = [
+        ('recommend', 'เมนูแนะนำ'),
+        ('tomyam', 'ต้ม'),
+        ('pad', 'ผัด'),
+        ('kang', 'แกง'),
+        ('tod','ทอด'),
+    ]
 
-class MyModel(models.Model):
-    event_name = models.CharField(max_length=200)
-    event_datetime = models.DateTimeField()
+    food_name = models.CharField(max_length=100)  # ชื่ออาหาร
+    price = models.DecimalField(max_digits=6, decimal_places=2)  # ราคาอาหาร
+    image_url = models.CharField(max_length=255)  # URL รูปภาพของอาหาร
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='recommend')  # ประเภทอาหาร
 
     def __str__(self):
-        return self.event_name
+        return self.food_name
+
+
+
 

@@ -181,3 +181,8 @@ def password_reset_confirm_view(request, uidb64, token):
 def my_bookings_view(request):
     user_bookings = Booking.objects.filter(user=request.user)
     return render(request, 'my_bookings.html', {'bookings': user_bookings})
+
+def menu_view(request):
+    category = request.GET.get('category', 'recommend')
+    menus = Menu.objects.filter(category=category)
+    return render(request, 'menu.html', {'menus': menus, 'category': category})

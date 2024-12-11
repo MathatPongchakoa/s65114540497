@@ -11,6 +11,7 @@ urlpatterns = [
     path('register/', register_view, name='register'),
     path('cancel-booking/', cancel_booking_view, name='cancel_booking'),
     path('my-bookings/', my_bookings_view, name='my_bookings'),
+    path('menu/', menu_view, name='menu'),
 
     path('reset-password/', auth_views.PasswordResetView.as_view(template_name='password_reset.html'), name='reset_password'),
     path('reset-password-done/', auth_views.PasswordResetDoneView.as_view(template_name='password_reset_done.html'), name='password_reset_done'),
