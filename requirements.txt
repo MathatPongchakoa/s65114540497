@@ -1,4 +1,4 @@
 Django
 pytz
 openpyxl
-mysql-connector-python
+mysqlclient
