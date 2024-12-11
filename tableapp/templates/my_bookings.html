@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Bookings</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div class="max-w-2xl w-full bg-white p-8 rounded-lg shadow-lg">
+        <h1 class="text-2xl font-bold mb-4 text-center">สถานะการจองโต๊ะของฉัน</h1>
+
+        {% if bookings %}
+            <table class="w-full border-collapse border border-gray-300">
+                <thead>
+                    <tr class="bg-gray-200">
+                        <th class="border border-gray-300 px-4 py-2">Table Name</th>
+                        <th class="border border-gray-300 px-4 py-2">Date</th>
+                        <th class="border border-gray-300 px-4 py-2">Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for booking in bookings %}
+                        <tr>
+                            <td class="border border-gray-300 px-4 py-2">{{ booking.table.table_name }}</td>
+                            <td class="border border-gray-300 px-4 py-2">{{ booking.booking_date }}</td>
+                            <td class="border border-gray-300 px-4 py-2">{{ booking.booking_time|time:"H:i" }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="text-center text-gray-500">ไม่มีโต๊ะที่คุณจองไว้</p>
+        {% endif %}
+
+        <div class="text-center mt-4">
+            <a href="/" class="text-blue-500 hover:underline">back</a>
+        </div>
+    </div>
+</body>
+</html>

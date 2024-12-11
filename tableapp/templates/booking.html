@@ -12,13 +12,19 @@
     <h1 class="text-center text-3xl font-bold mb-8">จองโต๊ะ {{ table_name }}</h1>
 
     <div class="max-w-md mx-auto bg-white p-6 rounded-lg shadow-lg">
+        <!-- แสดงข้อผิดพลาดถ้ามี -->
+        {% if message %}
+            <div class="bg-red-500 text-white p-4 rounded mb-4">
+                <p>{{ message }}</p>
+            </div>
+        {% endif %}
+
         <form action="" method="POST">
             {% csrf_token %}
-            <label for="date" class="block text-gray-700">เลือกวันที่:</label>
-            <input type="date" id="date" name="date" class="w-full border border-gray-300 p-2 rounded mt-2 mb-4">
 
-            <label for="time" class="block text-gray-700">เลือกเวลา:</label>
-            <input type="time" id="time" name="time" class="w-full border border-gray-300 p-2 rounded mt-2 mb-4">
+            <!-- ใช้ flatpickr เลือกวันและเวลา -->
+            <label for="datetime" class="block text-gray-700">เลือกวันที่และเวลา:</label>
+            <input type="text" id="datetime" name="datetime" class="w-full border border-gray-300 p-2 rounded mt-2 mb-4" placeholder="เลือกวันที่และเวลา">
 
             <button type="submit" class="w-full bg-blue-500 text-white p-2 rounded">จองโต๊ะ</button>
         </form>
@@ -27,12 +33,22 @@
     <!-- Flatpickr JS -->
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script>
-        // ใช้ Flatpickr เพื่อบังคับการแสดงผลเวลาเป็น 24 ชั่วโมง
-        flatpickr("#time", {
+        flatpickr("#datetime", {
             enableTime: true,
-            noCalendar: true,
-            dateFormat: "H:i", // แสดงผลในรูปแบบ 24 ชั่วโมง
-            time_24hr: true // ใช้เวลาแบบ 24 ชั่วโมง
+            dateFormat: "Y-m-d H:i", // รูปแบบวันที่และเวลา (ปี-เดือน-วัน ชั่วโมง:นาที)
+            time_24hr: true,          // ใช้เวลาแบบ 24 ชั่วโมง
+            minDate: "today",         // ไม่ให้เลือกวันที่เกินไป
+
+            // ห้ามเลือกวันเสาร์ (6) และอาทิตย์ (0)
+            disable: [
+                function(date) {
+                    return (date.getDay() === 0 || date.getDay() === 6); // ห้ามเลือกวันอาทิตย์และวันเสาร์
+                }
+            ],
+
+            // จำกัดเวลาให้เลือกได้เฉพาะ 9:00-17:00
+            minTime: "09:00", // เวลาตั้งแต่ 9:00
+            maxTime: "17:00"  // เวลาถึง 17:00
         });
     </script>
 </body>

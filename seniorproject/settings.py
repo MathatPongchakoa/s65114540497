@@ -37,7 +37,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    'tableapp'
+    'tableapp',
 ]
 
 MIDDLEWARE = [
@@ -76,10 +76,15 @@ WSGI_APPLICATION = "seniorproject.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": "django.db.backends.mysql",  # ใช้ MySQL
+        "NAME": "sn_project",          # ชื่อฐานข้อมูล
+        "USER": "root",             # ชื่อผู้ใช้ MySQL
+        "PASSWORD": "1234",     # รหัสผ่าน MySQL
+        "HOST": "localhost",                   # หรือที่อยู่ของ MySQL Server
+        "PORT": "3306",                        # พอร์ตของ MySQL (ค่าเริ่มต้นคือ 3306)
     }
 }
+
 
 
 # Password validation
@@ -122,3 +127,32 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# settings.py
+
+# เพิ่มการตั้งค่าสำหรับการเข้าสู่ระบบ
+LOGIN_REDIRECT_URL = '/table-status/'  
+LOGOUT_REDIRECT_URL = '/'  
+AUTH_USER_MODEL = 'tableapp.CustomUser'
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'  # หรือโฮสต์ SMTP ที่คุณใช้
+EMAIL_PORT = 587  # ใช้ 587 สำหรับ TLS หรือ 465 สำหรับ SSL
+EMAIL_USE_TLS = True  # ถ้าใช้ TLS
+EMAIL_HOST_USER = 'mathat.po.65@ubu.ac.th'  # อีเมลผู้ส่ง
+EMAIL_HOST_PASSWORD = 'hnos oqff kuep voar'  # รหัสผ่านของอีเมล
+DEFAULT_FROM_EMAIL = 'mathat.po.65@ubu.ac.th'
+
+DEBUG = True
+from django.urls import reverse_lazy
+DEFAULT_DOMAIN = 'http://127.0.0.1:8000'  # เปลี่ยนเป็นโดเมนหรือ IP ที่เข้าถึงได้
+
+ABSOLUTE_URL_OVERRIDES = {
+    'auth.user.password_reset_confirm': lambda obj: f'{DEFAULT_DOMAIN}{reverse_lazy("password_reset_confirm", args=[obj.uid, obj.token])}'
+}
+
+
+
+
+
+

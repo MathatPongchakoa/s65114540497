@@ -1,48 +1,69 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Table</title>
+    <title>Table Status</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        // ฟังก์ชันสำหรับจัดการการคลิกที่โต๊ะ
-        function handleTableClick(status, tableName) {
+        function handleTableClick(status, tableName, hasBooking) {
+            if (hasBooking === true) { // ตรวจสอบว่าผู้ใช้มีการจองแล้ว
+                alert('คุณสามารถจองได้เพียง 1 โต๊ะต่อ 1 บัญชี');
+                return;
+            }
+
             if (status === 'ว่าง') {
-                // ถ้าโต๊ะว่าง ให้เปลี่ยนหน้าไปยังหน้าจอง
                 window.location.href = `/booking/${tableName}/`;
             } else if (status === 'กำลังนั่ง') {
-                // ถ้าโต๊ะกำลังนั่ง ให้แจ้งเตือน
                 alert('โต๊ะนี้มีคนนั่งแล้ว');
             } else if (status === 'จอง') {
-                // ถ้าโต๊ะถูกจอง ให้แจ้งเตือน
                 alert('โต๊ะนี้ไม่ว่าง');
             }
         }
+
+        function confirmCancel(event) {
+            if (!confirm('แน่ใจแล้วหรือว่าต้องการยกเลิกการจอง?')) {
+                event.preventDefault(); // ยกเลิกการส่งฟอร์มหากไม่ยืนยัน
+            }
+        }
+
+        function preventPropagation(event) {
+            event.stopPropagation(); // หยุดการส่ง event ไปยังองค์ประกอบพาเรนต์
+        }
     </script>
 </head>
-<body class="bg-white">
+
+<body class="bg-gray-100">
 
     <!-- Navigation Bar -->
     <nav class="bg-red-500 shadow-lg">
         <div class="max-w-7xl mx-auto px-4">
             <div class="flex justify-between h-16">
-                <!-- Left Side (Logo) -->
                 <div class="flex items-center">
                     <a href="#" class="text-2xl font-bold text-white">JustFood</a>
                 </div>
-                <!-- Right Side (Links) -->
                 <div class="flex space-x-4 items-center">
-                    <a href="/table-status/" class="text-white hover:text-blue-300">Table</a>
+                    <a href="/" class="text-white hover:text-blue-300">Table</a>
                     <a href="/menu/" class="text-white hover:text-blue-300">Menu</a>
+                    <a href="/my-bookings/" class="text-white hover:text-blue-300">My Bookings</a>
+                    {% if user.is_authenticated %}
+                    <span class="text-white">Hello, {{ user.username }}</span>
+                    <form method="POST" action="{% url 'logout' %}" class="inline">
+                        {% csrf_token %}
+                        <button type="submit" class="text-white hover:text-blue-300 ml-2">Logout</button>
+                    </form>
+                    {% else %}
+                    <a href="/login/" class="text-white hover:text-blue-300">Login</a>
+                    {% endif %}
                 </div>
             </div>
         </div>
     </nav>
 
-    <!-- Main Content -->
-    <h1 class="text-center text-3xl font-bold mb-8 mt-6">Table</h1>
+    <h1 class="text-center text-3xl font-bold mb-8 mt-6">สถานะโต๊ะ</h1>
 
+    <!-- สถานะโต๊ะ -->
     <div class="flex justify-center items-center mb-4">
         <div class="flex items-center mr-4">
             <div class="w-4 h-4 bg-green-500 border border-black mr-2"></div>
@@ -58,21 +79,34 @@
         </div>
     </div>
 
+    <!-- แสดงตารางโต๊ะ -->
     <div class="grid grid-cols-4 gap-4 place-items-center">
         {% for table in table_data %}
-        <div class="w-32 h-32 flex justify-center items-center rounded-lg border-4 cursor-pointer
-            {% if table.status == 'ว่าง' %}
+        <div class="w-32 h-32 flex flex-col justify-center items-center rounded-lg border-4 cursor-pointer
+            {% if table.table_status == 'ว่าง' %}
                 border-green-500 text-green-500
-            {% elif table.status == 'กำลังนั่ง' %}
+            {% elif table.table_status == 'กำลังนั่ง' %}
                 border-orange-500 text-orange-500
-            {% elif table.status == 'จอง' %}
+            {% elif table.table_status == 'จอง' %}
                 border-blue-500 text-blue-500
-            {% endif %}
-        "
-        onclick="handleTableClick('{{ table.status }}', '{{ table.table_name }}')">
+            {% endif %}"
+            onclick="handleTableClick('{{ table.table_status }}', '{{ table.table_name }}', {{ has_booking|yesno:'true,false' }})">
             <span class="text-2xl font-bold">{{ table.table_name }}</span>
+
+            {% if table.table_status == 'จอง' and table.user %}
+            <p class="text-sm text-gray-600">จองโดย: {{ table.user.username }}</p>
+            {% if table.user.id == user.id %}
+            <form method="POST" action="/cancel-booking/" onclick="preventPropagation(event); confirmCancel(event);">
+                {% csrf_token %}
+                <input type="hidden" name="table_id" value="{{ table.id }}">
+                <button type="submit" class="text-sm text-red-500 hover:underline">Cancel Booking</button>
+            </form>
+            {% endif %}
+            {% endif %}
         </div>
         {% endfor %}
     </div>
+
 </body>
+
 </html>
