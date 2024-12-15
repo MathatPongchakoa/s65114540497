@@ -16,7 +16,9 @@
                     <tr class="bg-gray-200">
                         <th class="border border-gray-300 px-4 py-2">Table Name</th>
                         <th class="border border-gray-300 px-4 py-2">Date</th>
-                        <th class="border border-gray-300 px-4 py-2">Time</th>
+                        <th class="border border-gray-300 px-4 py-2">Start Time</th>
+                        <th class="border border-gray-300 px-4 py-2">End Time</th>
+                        <th class="border border-gray-300 px-4 py-2">Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -25,6 +27,16 @@
                             <td class="border border-gray-300 px-4 py-2">{{ booking.table.table_name }}</td>
                             <td class="border border-gray-300 px-4 py-2">{{ booking.booking_date }}</td>
                             <td class="border border-gray-300 px-4 py-2">{{ booking.booking_time|time:"H:i" }}</td>
+                            <td class="border border-gray-300 px-4 py-2">{{ booking.booking_end_time|time:"H:i" }}</td>
+                            <td class="border border-gray-300 px-4 py-2 text-center">
+                                <form method="POST" action="/cancel-booking/">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="booking_id" value="{{ booking.id }}">
+                                    <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
+                                        Cancel
+                                    </button>
+                                </form>
+                            </td>
                         </tr>
                     {% endfor %}
                 </tbody>
@@ -34,7 +46,7 @@
         {% endif %}
 
         <div class="text-center mt-4">
-            <a href="/" class="text-blue-500 hover:underline">back</a>
+            <a href="/" class="text-blue-500 hover:underline">กลับหน้าหลัก</a>
         </div>
     </div>
 </body>

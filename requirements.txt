@@ -2,3 +2,5 @@ Django
 pytz
 openpyxl
 mysqlclient
+django-background-tasks
+django-browser-reload

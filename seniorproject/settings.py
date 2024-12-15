@@ -37,7 +37,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    'tableapp',
+    "django_browser_reload",
+    "tableapp",
 ]
 
 MIDDLEWARE = [
@@ -48,6 +49,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    'django_browser_reload.middleware.BrowserReloadMiddleware',
 ]
 
 ROOT_URLCONF = "seniorproject.urls"
@@ -81,7 +83,10 @@ DATABASES = {
         "USER": "root",             # ชื่อผู้ใช้ MySQL
         "PASSWORD": "1234",     # รหัสผ่าน MySQL
         "HOST": "localhost",                   # หรือที่อยู่ของ MySQL Server
-        "PORT": "3306",                        # พอร์ตของ MySQL (ค่าเริ่มต้นคือ 3306)
+        "PORT": "3306",
+        'OPTIONS': {
+            'charset': 'utf8mb4',
+        },                   # พอร์ตของ MySQL (ค่าเริ่มต้นคือ 3306)
     }
 }
 
@@ -146,14 +151,10 @@ EMAIL_HOST_PASSWORD = 'hnos oqff kuep voar'  # รหัสผ่านของ
 DEFAULT_FROM_EMAIL = 'mathat.po.65@ubu.ac.th'
 
 DEBUG = True
-from django.urls import reverse_lazy
-DEFAULT_DOMAIN = 'http://127.0.0.1:8000'  # เปลี่ยนเป็นโดเมนหรือ IP ที่เข้าถึงได้
-
-ABSOLUTE_URL_OVERRIDES = {
-    'auth.user.password_reset_confirm': lambda obj: f'{DEFAULT_DOMAIN}{reverse_lazy("password_reset_confirm", args=[obj.uid, obj.token])}'
-}
 
 
+
+# ใน settings.py
 
 
 

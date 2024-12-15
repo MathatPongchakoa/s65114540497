@@ -1,55 +1,121 @@
+{% load custom_filters %} <!-- โหลด custom filters -->
+
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Booking for {{ table_name }}</title>
+    <title>Booking</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Flatpickr CSS -->
+    <!-- Flatpickr -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-</head>
-<body class="bg-red-50">
-    <h1 class="text-center text-3xl font-bold mb-8">จองโต๊ะ {{ table_name }}</h1>
-
-    <div class="max-w-md mx-auto bg-white p-6 rounded-lg shadow-lg">
-        <!-- แสดงข้อผิดพลาดถ้ามี -->
-        {% if message %}
-            <div class="bg-red-500 text-white p-4 rounded mb-4">
-                <p>{{ message }}</p>
-            </div>
-        {% endif %}
-
-        <form action="" method="POST">
-            {% csrf_token %}
-
-            <!-- ใช้ flatpickr เลือกวันและเวลา -->
-            <label for="datetime" class="block text-gray-700">เลือกวันที่และเวลา:</label>
-            <input type="text" id="datetime" name="datetime" class="w-full border border-gray-300 p-2 rounded mt-2 mb-4" placeholder="เลือกวันที่และเวลา">
-
-            <button type="submit" class="w-full bg-blue-500 text-white p-2 rounded">จองโต๊ะ</button>
-        </form>
-    </div>
-
-    <!-- Flatpickr JS -->
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script>
-        flatpickr("#datetime", {
-            enableTime: true,
-            dateFormat: "Y-m-d H:i", // รูปแบบวันที่และเวลา (ปี-เดือน-วัน ชั่วโมง:นาที)
-            time_24hr: true,          // ใช้เวลาแบบ 24 ชั่วโมง
-            minDate: "today",         // ไม่ให้เลือกวันที่เกินไป
+        document.addEventListener("DOMContentLoaded", function () {
+            const now = new Date();
 
-            // ห้ามเลือกวันเสาร์ (6) และอาทิตย์ (0)
-            disable: [
-                function(date) {
-                    return (date.getDay() === 0 || date.getDay() === 6); // ห้ามเลือกวันอาทิตย์และวันเสาร์
+            const endPicker = flatpickr("#booking_end", {
+                enableTime: true,
+                dateFormat: "Y-m-d H:i",
+                time_24hr: true,
+                locale: "th",
+                minDate: now
+            });
+
+            const startPicker = flatpickr("#booking_start", {
+                enableTime: true,
+                dateFormat: "Y-m-d H:i",
+                time_24hr: true,
+                locale: "th",
+                minDate: now,
+                onChange: function (selectedDates) {
+                    if (selectedDates.length > 0) {
+                        const startDate = selectedDates[0];
+                        const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+                        endPicker.setDate(endDate);
+
+                        const selectedDate = startDate.toISOString().split("T")[0];
+                        fetch(`/booking/{{ table_name }}/?date=${selectedDate}`)
+                            .then(response => response.json())
+                            .then(data => {
+                                const existingBookings = document.getElementById("existingBookings");
+                                if (data.bookings && data.bookings.length > 0) {
+                                    existingBookings.innerHTML = `<h3 class="text-lg font-bold mb-2">เวลาที่จองแล้ว:</h3>` +
+                                        data.bookings.map(
+                                            booking => `<div class="mb-1">เวลา: ${booking.start_time} - ${booking.end_time}</div>`
+                                        ).join("");
+                                } else {
+                                    existingBookings.innerHTML = `<h3 class="text-lg font-bold mb-2">ไม่มีการจองสำหรับวันนี้</h3>`;
+                                }
+                            })
+                            .catch(error => console.error("Error:", error));
+                    }
                 }
-            ],
-
-            // จำกัดเวลาให้เลือกได้เฉพาะ 9:00-17:00
-            minTime: "09:00", // เวลาตั้งแต่ 9:00
-            maxTime: "17:00"  // เวลาถึง 17:00
+            });
         });
+
+        function submitBooking() {
+            const bookingStart = document.getElementById('booking_start').value;
+            const bookingEnd = document.getElementById('booking_end').value;
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+            if (!bookingStart || !bookingEnd) {
+                alert("กรุณาเลือกเวลาเริ่มต้นและเวลาสิ้นสุด");
+                return;
+            }
+
+            fetch(window.location.href, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": csrfToken
+                },
+                body: JSON.stringify({
+                    booking_start: bookingStart,
+                    booking_end: bookingEnd
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                        window.location.href = "/success/";
+                    } else {
+                        alert(data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                    alert("เกิดข้อผิดพลาดในการจอง กรุณาลองใหม่อีกครั้ง");
+                });
+        }
     </script>
+</head>
+
+<body class="bg-gray-100">
+    <div class="max-w-3xl mx-auto mt-10 bg-white p-6 rounded shadow-lg">
+        <h1 class="text-2xl font-bold mb-6">จองโต๊ะ: {{ table_name }}</h1>
+        <p class="text-lg mb-4 text-gray-700">จำนวนที่นั่ง: {{ seating_capacity }} คน</p> <!-- แสดงจำนวนที่นั่ง -->
+
+        <form id="bookingForm">
+            {% csrf_token %}
+            <div class="mb-4">
+                <label for="booking_start" class="block text-sm font-medium text-gray-700">เวลาเริ่มต้น</label>
+                <input type="text" id="booking_start" name="booking_start"
+                    class="mt-1 block w-full border-gray-300 rounded-md" placeholder="เลือกเวลาเริ่มต้น">
+            </div>
+            <div class="mb-4">
+                <label for="booking_end" class="block text-sm font-medium text-gray-700">เวลาสิ้นสุด</label>
+                <input type="text" id="booking_end" name="booking_end"
+                    class="mt-1 block w-full border-gray-300 rounded-md" placeholder="เวลาสิ้นสุดจะถูกกำหนดอัตโนมัติ">
+            </div>
+            <button type="button" onclick="submitBooking()"
+                class="bg-blue-500 text-white px-4 py-2 rounded">ยืนยัน</button>
+        </form>
+        <div id="existingBookings" class="mt-4 text-gray-700"></div>
+    </div>
 </body>
+
 </html>

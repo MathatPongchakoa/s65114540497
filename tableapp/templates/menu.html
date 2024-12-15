@@ -6,10 +6,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Menu</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // เพิ่มสินค้าไปยังตะกร้า
+        function addToCart(foodId) {
+            fetch(`/cart/add/`, { // URL ไปยัง view ที่จัดการตะกร้า
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": "{{ csrf_token }}" // ใช้ CSRF Token ป้องกัน
+                },
+                body: JSON.stringify({ "food_id": foodId }) // ส่ง ID สินค้า
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(`เพิ่ม "${data.food_name}" ลงในตะกร้าแล้ว!`);
+                } else {
+                    alert("เกิดข้อผิดพลาดในการเพิ่มสินค้า");
+                }
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+            });
+        }
+    </script>
 </head>
 
 <body class="bg-gray-100">
-
     <!-- Navigation Bar -->
     <nav class="bg-red-500 shadow-lg">
         <div class="max-w-7xl mx-auto px-4">
@@ -20,6 +44,10 @@
                 <div class="flex space-x-4 items-center">
                     <a href="/" class="text-white hover:text-blue-300">Table</a>
                     <a href="/menu/" class="text-white hover:text-blue-300">Menu</a>
+                    <a href="/cart/" class="text-white hover:text-blue-300 flex items-center">
+                        <img src="/static/images/cart.png" alt="Cart" class="w-6 h-6">
+                    </a>
+                    
                     <a href="/my-bookings/" class="text-white hover:text-blue-300">My Bookings</a>
                     {% if user.is_authenticated %}
                     <span class="text-white">Hello, {{ user.username }}</span>
@@ -35,15 +63,14 @@
         </div>
     </nav>
 
-    <h1 class="text-center text-3xl font-bold mb-6 mt-6">เมนูแนะนำ</h1>
+    <h1 class="text-center text-3xl font-bold mb-6 mt-6">เมนูอาหาร</h1>
 
     <!-- Navigation for categories -->
     <div class="flex justify-center mb-6">
-        <a href="?category=เมนูแนะนำ" class="bg-yellow-500 text-black px-4 py-2 rounded mx-2">เมนูแนะนำ</a>
-        <a href="?category=ต้ม" class="bg-yellow-200 px-4 py-2 rounded mx-2">ต้ม</a>
-        <a href="?category=ผัด" class="bg-yellow-200 px-4 py-2 rounded mx-2">ผัด</a>
-        <a href="?category=แกง" class="bg-yellow-200 px-4 py-2 rounded mx-2">แกง</a>
-        <a href="?category=ทอด" class="bg-yellow-200 px-4 py-2 rounded mx-2">ทอด</a>
+        <a href="/menu/" class="bg-yellow-500 text-black px-4 py-2 rounded mx-2">ทั้งหมด</a>
+        {% for category in categories %}
+        <a href="/menu/?category={{ category.name }}" class="bg-yellow-200 px-4 py-2 rounded mx-2">{{ category.name }}</a>
+        {% endfor %}
     </div>
 
     <!-- Menu items -->
@@ -56,14 +83,16 @@
                     <div>
                         <h2 class="text-lg font-bold">{{ menu.food_name }}</h2>
                         <p class="text-sm text-gray-500">{{ menu.price }} บาท</p>
+                        <p class="text-sm text-gray-400">ประเภท: {{ menu.category.name }}</p>
                     </div>
-                    <button class="bg-green-500 text-white rounded-full w-8 h-8 flex justify-center items-center">+</button>
+                    <!-- ปุ่มเพิ่มสินค้า -->
+                    <button onclick="addToCart({{ menu.id }})"
+                        class="bg-green-500 text-white rounded-full w-8 h-8 flex justify-center items-center">+</button>
                 </div>
             </div>
             {% endfor %}
         </div>
     </div>
-
 </body>
 
 </html>
