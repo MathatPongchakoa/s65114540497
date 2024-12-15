@@ -18,6 +18,7 @@ from django.http import JsonResponse
 from django.http import Http404
 import json
 from django.views.decorators.csrf import csrf_exempt
+from .tasks import check_booking_status, delete_cancelled_bookings
 
 
 
@@ -33,7 +34,7 @@ def table_status_view(request):
         "has_active_booking": user_bookings.exists() if user_bookings else False,
     })
 
-
+@login_required(login_url='login')
 def booking_view(request, table_name):
     table = get_object_or_404(Table, table_name=table_name)
 
@@ -299,4 +300,6 @@ def add_to_cart(request):
             'food_name': menu_item.food_name
         })
     return JsonResponse({'success': False}, status=400)
+
+
 

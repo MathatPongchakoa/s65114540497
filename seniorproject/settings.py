@@ -37,8 +37,9 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "django_browser_reload",
-    "tableapp",
+    'tableapp',
+    'django_browser_reload',
+    'django_celery_beat',
 ]
 
 MIDDLEWARE = [
@@ -150,11 +151,14 @@ EMAIL_HOST_USER = 'mathat.po.65@ubu.ac.th'  # อีเมลผู้ส่ง
 EMAIL_HOST_PASSWORD = 'hnos oqff kuep voar'  # รหัสผ่านของอีเมล
 DEFAULT_FROM_EMAIL = 'mathat.po.65@ubu.ac.th'
 
-DEBUG = True
+
+# Celery settings
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
 
 
 
-# ใน settings.py
 
 
 

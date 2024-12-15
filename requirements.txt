@@ -3,3 +3,6 @@ pytz
 openpyxl
 mysqlclient
 django-browser-reload
+celery 
+redis
+django-celery-beat

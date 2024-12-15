@@ -4,4 +4,8 @@
 
 mathat.po.65@ubu.ac.th
 
-รัน celery -A seniorproject worker --loglevel=info  ก่อน runserver
+docker run --name redis-server -p 6379:6379 -d redis จากนั้นไปก็ไปกดรันที่ img
+
+รัน celery -A seniorproject worker --loglevel=info --pool=solo
+celery -A seniorproject beat --loglevel=info
+ก่อน runserver

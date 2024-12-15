@@ -1,8 +1,7 @@
 from django.apps import AppConfig
 
-
 class TableappConfig(AppConfig):
-    default_auto_field = 'django.db.models.BigAutoField'
     name = 'tableapp'
 
-
+    def ready(self):
+        import tableapp.tasks  # โหลด task ในแอป
