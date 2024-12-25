@@ -34,7 +34,10 @@
                     <a href="/menu/" class="text-white hover:text-blue-300">Menu</a>
                     <!-- เพิ่มไอคอนตะกร้า -->
                     <a href="/cart/" class="text-white hover:text-blue-300 flex items-center">
-                        <img src="/static/images/cart.png" alt="Cart" class="w-6 h-6"></a>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2m1.6 10h9.2m4.8-8H6.4M5.4 5L7.6 16h9.8l1.2-6m-5.2 6v2a2 2 0 01-2 2H9a2 2 0 01-2-2v-2"></path>
+                        </svg>
+                    </a>
                     <a href="/my-bookings/" class="text-white hover:text-blue-300">My Bookings</a>
                     {% if user.is_authenticated %}
                     <span class="text-white">Hello, {{ user.username }}</span>

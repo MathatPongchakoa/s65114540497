@@ -108,6 +108,18 @@ class CartItem(models.Model):
         return f"{self.menu.food_name} - {self.quantity} pcs"
 
 
+User = get_user_model()
+
+class Order(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)  # ชื่อผู้ใช้
+    table_name = models.CharField(max_length=100)  # ชื่อโต๊ะ
+    booking_start = models.DateTimeField()  # เวลาเริ่มต้นการจอง
+    booking_end = models.DateTimeField()  # เวลาสิ้นสุดการจอง
+    total_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)  # ยอดรวม
+    created_at = models.DateTimeField(auto_now_add=True)  # วันที่สั่งซื้อ
+
+    def __str__(self):
+        return f"Order by {self.user.username} for table {self.table_name}"
 
 
 

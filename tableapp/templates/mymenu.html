@@ -1,3 +1,5 @@
+{% load custom_filters %} <!-- โหลด custom filters -->
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -7,26 +9,27 @@
     <title>Menu</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        // เพิ่มสินค้าไปยังตะกร้า
         function addToCart(foodId) {
-            fetch(`/cart/add/`, {
-                method: "POST",
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+            fetch('/cart/add/', {
+                method: 'POST',
                 headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRFToken": "{{ csrf_token }}"
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
                 },
-                body: JSON.stringify({ "food_id": foodId })
+                body: JSON.stringify({ food_id: foodId }),
             })
-                .then(response => response.json())
-                .then(data => {
+                .then((response) => response.json())
+                .then((data) => {
                     if (data.success) {
                         alert(`เพิ่ม "${data.food_name}" ลงในตะกร้าแล้ว!`);
                     } else {
-                        alert(data.message || "คุณต้องจองโต๊ะก่อนสั่งอาหาร");
+                        alert(data.message || "เกิดข้อผิดพลาดในการเพิ่มสินค้า");
                     }
                 })
-                .catch(error => {
-                    console.error("Error:", error);
+                .catch((error) => {
+                    console.error('Error:', error);
                     alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
                 });
         }
@@ -44,12 +47,10 @@
                 <div class="flex space-x-4 items-center">
                     <a href="/" class="text-white hover:text-blue-300">Table</a>
                     <a href="/menu/" class="text-white hover:text-blue-300">Menu</a>
+                    <!-- ไอคอนตะกร้า -->
                     <a href="/cart/" class="text-white hover:text-blue-300 flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2m1.6 10h9.2m4.8-8H6.4M5.4 5L7.6 16h9.8l1.2-6m-5.2 6v2a2 2 0 01-2 2H9a2 2 0 01-2-2v-2"></path>
-                        </svg>
+                        <img src="/static/images/cart.png" alt="Cart" class="w-6 h-6">
                     </a>
-
                     <a href="/my-bookings/" class="text-white hover:text-blue-300">My Bookings</a>
                     {% if user.is_authenticated %}
                     <span class="text-white">Hello, {{ user.username }}</span>
@@ -65,35 +66,28 @@
         </div>
     </nav>
 
-    <h1 class="text-center text-3xl font-bold mb-6 mt-6">เมนูอาหาร</h1>
+    <h1 class="text-center text-3xl font-bold mb-8 mt-6">เมนูอาหาร</h1>
 
     <!-- Navigation for categories -->
-    <div class="flex justify-center mb-6">
+    <div class="text-center my-4">
         <a href="/menu/" class="bg-yellow-500 text-black px-4 py-2 rounded mx-2">ทั้งหมด</a>
         {% for category in categories %}
         <a href="/menu/?category={{ category.name }}" class="bg-yellow-200 px-4 py-2 rounded mx-2">{{ category.name }}</a>
         {% endfor %}
     </div>
 
-    <!-- Menu items -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+    <!-- แสดงเมนู -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-7xl mx-auto">
         {% for menu in menus %}
         <div class="border p-4 rounded-lg shadow bg-white">
             <img src="{{ menu.image_url }}" alt="{{ menu.food_name }}" class="w-full h-32 object-cover rounded">
-            <div class="flex justify-between items-center mt-4">
-                <div>
-                    <h2 class="text-lg font-bold">{{ menu.food_name }}</h2>
-                    <p class="text-sm text-gray-500">{{ menu.price }} บาท</p>
-                    <p class="text-sm text-gray-400">ประเภท: {{ menu.category.name }}</p>
-                </div>
-                <!-- ตรวจสอบสถานะการจอง -->
-                {% if active_booking %}
+            <div class="mt-4">
+                <h2 class="text-lg font-bold">{{ menu.food_name }}</h2>
+                <p class="text-sm text-gray-500">{{ menu.price|floatformat:2 }} บาท</p>
+                <p class="text-sm text-gray-400">ประเภท: {{ menu.category.name }}</p>
+                <!-- ปุ่มเพิ่มสินค้า -->
                 <button onclick="addToCart({{ menu.id }})"
-                    class="bg-green-500 text-white rounded-full w-8 h-8 flex justify-center items-center">+</button>
-                {% else %}
-                <button disabled
-                    class="bg-gray-400 text-white rounded-full w-8 h-8 flex justify-center items-center cursor-not-allowed">+</button>
-                {% endif %}
+                    class="bg-green-500 text-white rounded-full w-8 h-8 flex justify-center items-center mt-2">+</button>
             </div>
         </div>
         {% endfor %}

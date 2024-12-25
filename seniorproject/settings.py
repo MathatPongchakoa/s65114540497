@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'tableapp',
     'django_browser_reload',
     'django_celery_beat',
+    'django_dbml',
 ]
 
 MIDDLEWARE = [
@@ -88,7 +89,11 @@ DATABASES = {
         'OPTIONS': {
             'charset': 'utf8mb4',
         },                   # พอร์ตของ MySQL (ค่าเริ่มต้นคือ 3306)
-    }
+    },
+    'sqlite3': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    },
 }
 
 

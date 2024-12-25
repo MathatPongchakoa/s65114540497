@@ -7,15 +7,44 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Booking</title>
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Flatpickr -->
+
+    <!-- Flatpickr CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+
+    <!-- Flatpickr JS -->
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+    <!-- Script สำหรับ Flatpickr และการแสดงผลเวลาที่ถูกจอง -->
     <script>
         document.addEventListener("DOMContentLoaded", function () {
-            const now = new Date();
+            const now = new Date(); // เวลาปัจจุบัน
 
+            const existingBookingsDiv = document.getElementById("existingBookings"); // ส่วนแสดงผลการจอง
+
+            // ฟังก์ชันแสดงเวลาที่จองแล้ว
+            function loadExistingBookings(selectedDate = now.toISOString().split("T")[0]) {
+                fetch(`/booking/{{ table_name }}/?date=${selectedDate}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.bookings && data.bookings.length > 0) {
+                            existingBookingsDiv.innerHTML = `<h3 class="text-lg font-bold mb-2">เวลาที่จองแล้วในวันนี้:</h3>` +
+                                data.bookings.map(
+                                    booking => `<div class="mb-1">เวลา: ${booking.start_time} - ${booking.end_time}</div>`
+                                ).join("");
+                        } else {
+                            existingBookingsDiv.innerHTML = `<h3 class="text-lg font-bold mb-2">ไม่มีการจองสำหรับวันนี้</h3>`;
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Error loading bookings:", error);
+                        existingBookingsDiv.innerHTML = "ไม่สามารถโหลดข้อมูลการจองได้";
+                    });
+            }
+
+            // Flatpickr สำหรับเวลาสิ้นสุด
             const endPicker = flatpickr("#booking_end", {
                 enableTime: true,
                 dateFormat: "Y-m-d H:i",
@@ -24,38 +53,29 @@
                 minDate: now
             });
 
+            // Flatpickr สำหรับเวลาเริ่มต้น
             const startPicker = flatpickr("#booking_start", {
                 enableTime: true,
                 dateFormat: "Y-m-d H:i",
                 time_24hr: true,
                 locale: "th",
-                minDate: now,
+                defaultDate: now, // กำหนดค่าเริ่มต้นเป็นเวลาปัจจุบัน
+                minDate: now,     // ไม่อนุญาตให้เลือกเวลาย้อนหลัง
                 onChange: function (selectedDates) {
                     if (selectedDates.length > 0) {
                         const startDate = selectedDates[0];
-                        const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
-                        endPicker.setDate(endDate);
-
-                        const selectedDate = startDate.toISOString().split("T")[0];
-                        fetch(`/booking/{{ table_name }}/?date=${selectedDate}`)
-                            .then(response => response.json())
-                            .then(data => {
-                                const existingBookings = document.getElementById("existingBookings");
-                                if (data.bookings && data.bookings.length > 0) {
-                                    existingBookings.innerHTML = `<h3 class="text-lg font-bold mb-2">เวลาที่จองแล้ว:</h3>` +
-                                        data.bookings.map(
-                                            booking => `<div class="mb-1">เวลา: ${booking.start_time} - ${booking.end_time}</div>`
-                                        ).join("");
-                                } else {
-                                    existingBookings.innerHTML = `<h3 class="text-lg font-bold mb-2">ไม่มีการจองสำหรับวันนี้</h3>`;
-                                }
-                            })
-                            .catch(error => console.error("Error:", error));
+                        const endDate = new Date(startDate.getTime() + 60 * 60 * 1000); // +1 ชั่วโมง
+                        endPicker.setDate(endDate); // ตั้งค่าเวลาสิ้นสุดอัตโนมัติ
+                        loadExistingBookings(startDate.toISOString().split("T")[0]); // โหลดการจองตามวันที่เลือก
                     }
                 }
             });
+
+            // โหลดการจองครั้งแรกเมื่อเปิดหน้าเว็บ
+            loadExistingBookings();
         });
 
+        // ฟังก์ชันสำหรับยืนยันการจอง
         function submitBooking() {
             const bookingStart = document.getElementById('booking_start').value;
             const bookingEnd = document.getElementById('booking_end').value;
@@ -66,6 +86,7 @@
                 return;
             }
 
+            // ส่งข้อมูลการจองไปยัง Server
             fetch(window.location.href, {
                 method: "POST",
                 headers: {
@@ -96,9 +117,17 @@
 
 <body class="bg-gray-100">
     <div class="max-w-3xl mx-auto mt-10 bg-white p-6 rounded shadow-lg">
+        <!-- ปุ่มย้อนกลับ -->
+        <a href="{% url 'table_status' %}" class="flex items-center text-blue-500 hover:underline transition-all duration-300">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+        </a>
+        <!-- แสดงรายละเอียดการจอง -->
         <h1 class="text-2xl font-bold mb-6">จองโต๊ะ: {{ table_name }}</h1>
-        <p class="text-lg mb-4 text-gray-700">จำนวนที่นั่ง: {{ seating_capacity }} คน</p> <!-- แสดงจำนวนที่นั่ง -->
+        <p class="text-lg mb-4 text-gray-700">จำนวนที่นั่ง: {{ seating_capacity }} คน</p>
 
+        <!-- ฟอร์มการจอง -->
         <form id="bookingForm">
             {% csrf_token %}
             <div class="mb-4">
@@ -114,8 +143,9 @@
             <button type="button" onclick="submitBooking()"
                 class="bg-blue-500 text-white px-4 py-2 rounded">ยืนยัน</button>
         </form>
+
+        <!-- แสดงเวลาที่ถูกจองไปแล้ว -->
         <div id="existingBookings" class="mt-4 text-gray-700"></div>
     </div>
 </body>
-
 </html>

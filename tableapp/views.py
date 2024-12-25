@@ -19,6 +19,7 @@ from django.http import Http404
 import json
 from django.views.decorators.csrf import csrf_exempt
 from .tasks import check_booking_status, delete_cancelled_bookings
+from django.http import HttpResponseBadRequest
 
 
 
@@ -37,47 +38,69 @@ def table_status_view(request):
 @login_required(login_url='login')
 def booking_view(request, table_name):
     table = get_object_or_404(Table, table_name=table_name)
+    active_booking = Booking.objects.filter(user=request.user, table=table, status="pending").first()
 
     if request.method == "POST":
         data = json.loads(request.body)
-        booking_start = datetime.strptime(data["booking_start"], "%Y-%m-%d %H:%M")
-        booking_end = datetime.strptime(data["booking_end"], "%Y-%m-%d %H:%M")
 
-        # ตรวจสอบว่าผู้ใช้คนนี้มีการจองในช่วงเวลาเดียวกันอยู่หรือไม่
-        overlapping_user_bookings = Booking.objects.filter(
-            user=request.user,
-            booking_date=booking_start.date(),
-        ).filter(
-            booking_time__lt=booking_end.time(),
-            booking_end_time__gt=booking_start.time()
-        )
-        if overlapping_user_bookings.exists():
-            return JsonResponse({"success": False, "message": "คุณมีการจองโต๊ะอยู่แล้วในช่วงเวลานี้"})
+        if "booking_start" in data and "booking_end" in data:
+            # การจองโต๊ะ
+            booking_start = datetime.strptime(data["booking_start"], "%Y-%m-%d %H:%M")
+            booking_end = datetime.strptime(data["booking_end"], "%Y-%m-%d %H:%M")
 
-        # ตรวจสอบการจองทับซ้อนของโต๊ะ
-        conflicting_bookings = Booking.objects.filter(
-            table=table,
-            booking_date=booking_start.date()
-        ).filter(
-            booking_time__lt=booking_end.time(),
-            booking_end_time__gt=booking_start.time()
-        )
-        if conflicting_bookings.exists():
-            return JsonResponse({"success": False, "message": "เวลานี้โต๊ะถูกจองแล้ว"})
+            # ตรวจสอบการจองซ้ำ
+            overlapping_user_bookings = Booking.objects.filter(
+                user=request.user,
+                booking_date=booking_start.date(),
+            ).filter(
+                booking_time__lt=booking_end.time(),
+                booking_end_time__gt=booking_start.time()
+            )
+            if overlapping_user_bookings.exists():
+                return JsonResponse({"success": False, "message": "คุณมีการจองโต๊ะอยู่แล้วในช่วงเวลานี้"})
 
-        # สร้างการจองใหม่
-        Booking.objects.create(
-            table=table,
-            booking_date=booking_start.date(),
-            booking_time=booking_start.time(),
-            booking_end_time=booking_end.time(),
-            user=request.user,
-            status='pending'  # ใช้ภาษาอังกฤษแทน
-        )
-        return JsonResponse({"success": True, "message": "จองโต๊ะสำเร็จ!"})
+            conflicting_bookings = Booking.objects.filter(
+                table=table,
+                booking_date=booking_start.date()
+            ).filter(
+                booking_time__lt=booking_end.time(),
+                booking_end_time__gt=booking_start.time()
+            )
+            if conflicting_bookings.exists():
+                return JsonResponse({"success": False, "message": "เวลานี้โต๊ะถูกจองแล้ว"})
+
+            # สร้างการจองใหม่
+            Booking.objects.create(
+                table=table,
+                booking_date=booking_start.date(),
+                booking_time=booking_start.time(),
+                booking_end_time=booking_end.time(),
+                user=request.user,
+                status='pending'
+            )
+            return JsonResponse({"success": True, "message": "จองโต๊ะสำเร็จ!"})
+
+        elif "food_id" in data:
+            # การสั่งอาหาร
+            if not active_booking:
+                return JsonResponse({"success": False, "message": "คุณต้องจองโต๊ะก่อนสั่งอาหาร"})
+
+            food_id = data["food_id"]
+            try:
+                menu_item = Menu.objects.get(id=food_id)
+                cart, created = Cart.objects.get_or_create(user=request.user)
+                cart_item, created = CartItem.objects.get_or_create(cart=cart, menu=menu_item)
+                if not created:
+                    cart_item.quantity += 1
+                    cart_item.save()
+
+                return JsonResponse({"success": True, "food_name": menu_item.food_name})
+            except Menu.DoesNotExist:
+                return JsonResponse({"success": False, "message": "เมนูอาหารไม่พบ"}, status=404)
+
+        return HttpResponseBadRequest("Invalid data")
 
     elif request.method == "GET" and "date" in request.GET:
-        # ดึงข้อมูลการจองในวันนั้น
         selected_date = request.GET.get("date")
         existing_bookings = Booking.objects.filter(table=table, booking_date=selected_date).values("booking_time", "booking_end_time")
         bookings_list = [
@@ -86,22 +109,39 @@ def booking_view(request, table_name):
         ]
         return JsonResponse({"bookings": bookings_list})
 
-    return render(request, "booking.html", {"table_name": table.table_name, "seating_capacity": table.seating_capacity})
+    # ไม่ส่ง `menus` ถ้าหน้านี้ใช้สำหรับจองโต๊ะเท่านั้น
+    context = {
+        "table_name": table.table_name,
+        "seating_capacity": table.seating_capacity,
+        "active_booking": active_booking,
+    }
+
+    # ตรวจสอบว่าควรแสดงเมนูหรือไม่
+    if active_booking:
+        context["menus"] = Menu.objects.all()
+
+    return render(request, "booking.html", context)
 
 
+@login_required
 def cancel_booking(request):
     if request.method == 'POST':
         booking_id = request.POST.get('booking_id')
         booking = get_object_or_404(Booking, id=booking_id, user=request.user)
 
-        # ลบการจอง
+        # ลบคำสั่งซื้อที่เกี่ยวข้องกับการจองนี้
+        related_order = Order.objects.filter(
+            user=request.user,
+            table_name=booking.table.table_name,
+            booking_start__date=booking.booking_date
+        ).first()
+        if related_order:
+            related_order.delete()
+
+        # เปลี่ยนสถานะการจอง หรือ ลบการจอง
         booking.delete()
 
-        # เปลี่ยนสถานะโต๊ะกลับเป็น "ว่าง"
-        booking.table.table_status = "available"
-        booking.table.save()
-
-        return redirect('my_bookings')  # กลับไปหน้าสถานะการจองของฉัน
+        return JsonResponse({'success': True, 'message': 'ยกเลิกการจองและคำสั่งซื้อสำเร็จ'})
 
     return JsonResponse({'success': False, 'message': 'Method not allowed'}, status=405)
 
@@ -249,6 +289,9 @@ def menu_view(request):
     # ค้นหาหมวดหมู่ทั้งหมด
     categories = Category.objects.all()
 
+    # ตรวจสอบสถานะการจองของผู้ใช้งาน
+    active_booking = Booking.objects.filter(user=request.user, status="pending").first()
+
     if category_name:
         try:
             # ค้นหา Category instance จากชื่อ
@@ -262,6 +305,7 @@ def menu_view(request):
     context = {
         'categories': categories,
         'menus': menus,
+        'active_booking': active_booking,  # ส่งข้อมูลสถานะการจองไปยัง template
     }
     return render(request, 'menu.html', context)
 
@@ -275,31 +319,137 @@ def confirm_booking(request, booking_id):
     else:
         return JsonResponse({'success': False, 'message': 'Method not allowed'}, status=405)
     
-@login_required  # ถ้าผู้ใช้ต้องล็อกอินก่อน
+@login_required
+@csrf_exempt
 def add_to_cart(request):
-    if request.method == 'POST':
-        data = json.loads(request.body)
-        food_id = data.get('food_id')
-        
-        # ดึงเมนูจาก ID
-        menu_item = get_object_or_404(Menu, id=food_id)
-        
-        # ถ้าไม่มีตะกร้าของผู้ใช้ ให้สร้างใหม่
-        cart, created = Cart.objects.get_or_create(user=request.user, is_active=True)
+    if request.method == "POST":
+        # ตรวจสอบว่าผู้ใช้มีการจองโต๊ะหรือไม่
+        active_booking = Booking.objects.filter(user=request.user, status="pending").first()
+        if not active_booking:
+            return JsonResponse({"success": False, "message": "คุณต้องจองโต๊ะก่อนสั่งอาหาร"}, status=403)
 
-        # เพิ่มสินค้าลงในตะกร้า
-        cart_item, created = CartItem.objects.get_or_create(cart=cart, menu=menu_item)
+        # ดำเนินการเพิ่มอาหารลงในตะกร้า
+        try:
+            data = json.loads(request.body)
+            menu_id = data.get("food_id")
+            if not menu_id:
+                return JsonResponse({"success": False, "message": "ไม่พบเมนูที่เลือก"}, status=400)
 
-        if created:
-            cart_item.quantity = 1  # ตั้งค่าจำนวนสินค้าเริ่มต้นเป็น 1
-            cart_item.save()
+            menu_item = Menu.objects.get(id=menu_id)
+            cart, created = Cart.objects.get_or_create(user=request.user, is_active=True)
+            cart_item, created = CartItem.objects.get_or_create(cart=cart, menu=menu_item)
 
-        # ส่งผลลัพธ์กลับไป
+            if not created:
+                cart_item.quantity += 1  # เพิ่มจำนวนสินค้า
+                cart_item.save()
+
+            return JsonResponse({"success": True, "food_name": menu_item.food_name})
+        except Menu.DoesNotExist:
+            return JsonResponse({"success": False, "message": "เมนูไม่พบ"}, status=404)
+    return JsonResponse({"success": False, "message": "Invalid request method"}, status=405)
+
+def cart_view(request):
+    try:
+        # ดึงข้อมูลตะกร้าของผู้ใช้
+        cart = Cart.objects.get(user=request.user, is_active=True)  # หาตะกร้าของผู้ใช้ที่ active
+        cart_items = cart.items.all()  # ดึงรายการสินค้าทั้งหมดในตะกร้า
+    except Cart.DoesNotExist:
+        cart_items = []  # ถ้าตะกร้าไม่พบ ให้เป็นรายการว่าง
+
+    # คำนวณราคารวม
+    total_price = sum(item.menu.price * item.quantity for item in cart_items)
+
+    context = {
+        'cart_items': cart_items,
+        'total_price': total_price,
+    }
+    return render(request, 'cart.html', context)
+
+@csrf_exempt
+def update_cart_item(request, item_id):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            action = data.get("action")
+
+            # ค้นหา CartItem
+            cart_item = CartItem.objects.get(id=item_id, cart__user=request.user)
+
+            if action == "increase":
+                cart_item.quantity += 1
+                cart_item.save()
+            elif action == "decrease":
+                if cart_item.quantity > 1:
+                    cart_item.quantity -= 1
+                    cart_item.save()
+                else:
+                    cart_item.delete()  # ลบสินค้าออกหากจำนวนลดเป็น 0
+            elif action == "remove":
+                cart_item.delete()
+
+            return JsonResponse({"success": True})
+        except CartItem.DoesNotExist:
+            return JsonResponse({"success": False, "error": "ไม่พบสินค้าในตะกร้า"})
+        except Exception as e:
+            return JsonResponse({"success": False, "error": str(e)})
+
+    return JsonResponse({"success": False, "error": "Invalid request method"})
+
+@login_required
+def confirm_order(request):
+    if request.method == "POST":
+        # ดึงข้อมูลการจองโต๊ะของผู้ใช้
+        active_booking = Booking.objects.filter(
+            user=request.user,
+            status="pending"  # หรือสถานะที่ใช้แยกการจองโต๊ะ
+        ).first()
+
+        if not active_booking:
+            return JsonResponse({
+                "success": False,
+                "message": "คุณต้องจองโต๊ะก่อนที่จะยืนยันคำสั่งซื้อ"
+            }, status=403)
+
+        # ดึงข้อมูลตะกร้าของผู้ใช้
+        cart = Cart.objects.filter(user=request.user, is_active=True).first()
+        if not cart or not cart.items.exists():
+            return JsonResponse({
+                "success": False,
+                "message": "ไม่มีสินค้าในตะกร้าของคุณ"
+            }, status=400)
+
+        # คำนวณยอดรวม
+        total_price = sum(
+            item.menu.price * item.quantity for item in cart.items.all()
+        )
+
+        # แปลง booking_start และ booking_end ให้เป็น timezone-aware datetime
+        booking_start = timezone.make_aware(
+            datetime.combine(active_booking.booking_date, active_booking.booking_time)
+        )
+        booking_end = booking_start + timedelta(hours=1)  # สมมติระยะเวลาการจอง 1 ชั่วโมง
+
+        # สร้างคำสั่งซื้อ
+        order = Order.objects.create(
+            user=request.user,
+            table_name=active_booking.table.table_name,  # ดึงชื่อโต๊ะจากการจอง
+            booking_start=booking_start,
+            booking_end=booking_end,
+            total_price=total_price
+        )
+
+        # ลบตะกร้า หรือเปลี่ยนสถานะให้ไม่ active
+        cart.is_active = False
+        cart.save()
+
         return JsonResponse({
-            'success': True,
-            'food_name': menu_item.food_name
+            "success": True,
+            "message": "ยืนยันคำสั่งซื้อสำเร็จ!",
+            "order_id": order.id
         })
-    return JsonResponse({'success': False}, status=400)
 
+    return JsonResponse({"success": False, "message": "Invalid request method"}, status=405)
 
+def order_success_view(request, order_id):
+    return render(request, 'order_success.html', {'order_id': order_id})
 

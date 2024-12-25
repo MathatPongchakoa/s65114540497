@@ -14,7 +14,11 @@ urlpatterns = [
     path('my-bookings/', my_bookings_view, name='my_bookings'),
     path('menu/', menu_view, name='menu'),
     path('confirm_booking/<int:booking_id>/', confirm_booking, name='confirm_booking'),
-
+    path('cart/add/', add_to_cart, name='add_to_cart'),
+    path('cart/', cart_view, name='cart'),
+    path('cart/update/<int:item_id>/', update_cart_item, name='update_cart_item'),
+    path('cart/confirm/', confirm_order, name='confirm_order'),
+    path('order/success/<int:order_id>/', order_success_view, name='order_success'),
 
     path('reset-password/', auth_views.PasswordResetView.as_view(template_name='password_reset.html'), name='reset_password'),
     path('reset-password-done/', auth_views.PasswordResetDoneView.as_view(template_name='password_reset_done.html'), name='password_reset_done'),
