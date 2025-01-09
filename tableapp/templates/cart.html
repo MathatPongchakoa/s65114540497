@@ -7,31 +7,68 @@
     <title>Cart</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        // ฟังก์ชันสำหรับเพิ่มจำนวนสินค้า
-        function increaseQuantity(itemId) {
-            updateCartItem(itemId, "increase");
+        // ฟังก์ชันสำหรับแสดง Popup
+        function showPopup(message, isError = false, callback = null) {
+            const popup = document.getElementById("popup");
+            const popupMessage = document.getElementById("popup-message");
+            const confirmButton = document.getElementById("confirmPopupButton");
+            const cancelButton = document.getElementById("cancelPopupButton");
+
+            popupMessage.textContent = message;
+            popup.classList.remove("hidden");
+
+            popup.classList.add("bg-gray-200");
+            confirmButton.classList.remove("hidden");
+
+            if (isError) {
+                confirmButton.classList.add("hidden");
+            } else {
+                confirmButton.classList.remove("hidden");
+            }
+
+            // ตั้ง callback ให้ทำงานเมื่อกดปุ่มยืนยัน
+            confirmButton.onclick = function () {
+                if (callback) callback();
+                closePopup();
+            };
+
+            cancelButton.onclick = function () {
+                closePopup();
+            };
         }
 
-        // ฟังก์ชันสำหรับลดจำนวนสินค้า
+        // ฟังก์ชันปิด Popup
+        function closePopup() {
+            const popup = document.getElementById("popup");
+            popup.classList.add("hidden");
+        }
+
+        // ฟังก์ชันลดจำนวนสินค้า
         function decreaseQuantity(itemId, quantity) {
             if (quantity === 1) {
-                // ถ้ามี 1 ชิ้น ให้แสดง Popup ยืนยันการลบ
-                if (confirm("สินค้าชิ้นนี้จะถูกลบออกจากตะกร้า คุณต้องการดำเนินการต่อหรือไม่?")) {
+                // แสดง Popup เมื่อมีสินค้า 1 ชิ้น
+                showPopup("คุณแน่ใจว่าต้องการลบสินค้าชิ้นนี้หรือไม่?", false, () => {
                     updateCartItem(itemId, "remove");
-                }
+                });
             } else {
                 updateCartItem(itemId, "decrease");
             }
         }
 
-        // ฟังก์ชันสำหรับลบสินค้า
-        function removeItem(itemId) {
-            if (confirm("คุณแน่ใจว่าต้องการลบสินค้าชิ้นนี้ออกจากตะกร้า?")) {
-                updateCartItem(itemId, "remove");
-            }
+        // ฟังก์ชันเพิ่มจำนวนสินค้า
+        function increaseQuantity(itemId) {
+            updateCartItem(itemId, "increase");
         }
 
-        // ฟังก์ชันจัดการคำขออัปเดตสินค้าในตะกร้า
+        // ฟังก์ชันลบสินค้า
+        function removeItem(itemId) {
+            // แสดง Popup ยืนยันการลบสินค้า
+            showPopup("คุณแน่ใจว่าต้องการลบสินค้าชิ้นนี้หรือไม่?", false, () => {
+                updateCartItem(itemId, "remove");
+            });
+        }
+
+        // ฟังก์ชันอัปเดตสินค้าในตะกร้า
         function updateCartItem(itemId, action) {
             fetch(`/cart/update/${itemId}/`, {
                 method: "POST",
@@ -44,33 +81,15 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    location.reload(); // รีโหลดหน้าเพื่ออัปเดตข้อมูล
+                    location.reload(); // อัปเดตหน้า
                 } else {
-                    alert(data.error || "เกิดข้อผิดพลาด");
+                    showPopup(data.error || "เกิดข้อผิดพลาด", true);
                 }
             })
-            .catch(error => console.error("Error:", error));
-        }
-
-        // ฟังก์ชันยืนยันคำสั่งซื้อ
-        function confirmOrder() {
-            fetch("/cart/confirm/", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRFToken": "{{ csrf_token }}"
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert(data.message);
-                    window.location.href = `/order/success/${data.order_id}/`;
-                } else {
-                    alert(data.message);
-                }
-            })
-            .catch(error => console.error("Error:", error));
+            .catch(error => {
+                console.error("Error:", error);
+                showPopup("เกิดข้อผิดพลาดในการเชื่อมต่อ", true);
+            });
         }
     </script>
 </head>
@@ -109,17 +128,27 @@
                 <div class="mt-4">
                     <h2 class="text-lg font-bold">ยอดรวม: {{ total_price|floatformat:2 }} บาท</h2>
                 </div>
-
-                <!-- ปุ่มยืนยันคำสั่งซื้อ -->
-                <div class="mt-6 text-center">
-                    <button onclick="confirmOrder()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition">ยืนยันคำสั่งซื้อ</button>
-                </div>
             {% else %}
                 <p class="text-center text-gray-500">ไม่มีสินค้าในตะกร้า</p>
             {% endif %}
         </div>
         <div class="mt-4 text-center">
             <a href="/menu/" class="text-blue-500 hover:underline">เพิ่มสินค้า</a>
+        </div>
+    </div>
+
+    <!-- Popup -->
+    <div id="popup" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center hidden">
+        <div class="bg-gray-200 p-6 rounded-lg shadow-lg max-w-md w-full">
+            <p id="popup-message" class="text-gray-800 text-lg mb-4"></p>
+            <div class="flex justify-end">
+                <button id="cancelPopupButton" class="bg-gray-300 text-gray-700 px-4 py-2 rounded mr-2">
+                    ยกเลิก
+                </button>
+                <button id="confirmPopupButton" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                    ยืนยัน
+                </button>
+            </div>
         </div>
     </div>
 </body>

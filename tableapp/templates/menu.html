@@ -20,15 +20,36 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        alert(`เพิ่ม "${data.food_name}" ลงในตะกร้าแล้ว!`);
+                        showPopup(`เพิ่ม "${data.food_name}" ลงในตะกร้าแล้ว!`);
                     } else {
-                        alert(data.message || "คุณต้องจองโต๊ะก่อนสั่งอาหาร");
+                        showPopup(data.message || "คุณต้องจองโต๊ะก่อนสั่งอาหาร", true);
                     }
                 })
                 .catch(error => {
                     console.error("Error:", error);
-                    alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+                    showPopup("เกิดข้อผิดพลาดในการเชื่อมต่อ", true);
                 });
+        }
+
+        // ฟังก์ชันแสดง Popup
+        function showPopup(message, isError = false) {
+            const popup = document.getElementById("popup");
+            const popupMessage = document.getElementById("popup-message");
+
+            popupMessage.textContent = message;
+            popup.classList.remove("hidden");
+
+            if (isError) {
+                popup.classList.add("bg-red-500");
+                popup.classList.remove("bg-green-500");
+            } else {
+                popup.classList.add("bg-green-500");
+                popup.classList.remove("bg-red-500");
+            }
+
+            setTimeout(() => {
+                popup.classList.add("hidden");
+            }, 3000); // ซ่อน Popup หลังจาก 3 วินาที
         }
     </script>
 </head>
@@ -45,11 +66,13 @@
                     <a href="/" class="text-white hover:text-blue-300">Table</a>
                     <a href="/menu/" class="text-white hover:text-blue-300">Menu</a>
                     <a href="/cart/" class="text-white hover:text-blue-300 flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2m1.6 10h9.2m4.8-8H6.4M5.4 5L7.6 16h9.8l1.2-6m-5.2 6v2a2 2 0 01-2 2H9a2 2 0 01-2-2v-2"></path>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 3h2l.4 2m1.6 10h9.2m4.8-8H6.4M5.4 5L7.6 16h9.8l1.2-6m-5.2 6v2a2 2 0 01-2 2H9a2 2 0 01-2-2v-2">
+                            </path>
                         </svg>
                     </a>
-
                     <a href="/my-bookings/" class="text-white hover:text-blue-300">My Bookings</a>
                     {% if user.is_authenticated %}
                     <span class="text-white">Hello, {{ user.username }}</span>
@@ -86,7 +109,6 @@
                     <p class="text-sm text-gray-500">{{ menu.price }} บาท</p>
                     <p class="text-sm text-gray-400">ประเภท: {{ menu.category.name }}</p>
                 </div>
-                <!-- ตรวจสอบสถานะการจอง -->
                 {% if active_booking %}
                 <button onclick="addToCart({{ menu.id }})"
                     class="bg-green-500 text-white rounded-full w-8 h-8 flex justify-center items-center">+</button>
@@ -98,6 +120,42 @@
         </div>
         {% endfor %}
     </div>
+
+    <!-- Pagination -->
+    <div class="mt-6 flex justify-center space-x-4">
+        {% if menus.has_previous %}
+        <!-- ลูกศรย้อนกลับ -->
+        <a href="?page={{ menus.previous_page_number }}{% if category_name %}&category={{ category_name }}{% endif %}" 
+           class="px-3 py-2 border border-gray-300 rounded hover:bg-gray-200 flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+            <span class="ml-1 hidden md:inline">Previous</span>
+        </a>
+        {% endif %}
+    
+        <!-- หมายเลขหน้าปัจจุบัน -->
+        <span class="px-3 py-2 border border-gray-300 rounded bg-gray-100">
+            Page {{ menus.number }} of {{ menus.paginator.num_pages }}
+        </span>
+    
+        {% if menus.has_next %}
+        <!-- ลูกศรไปข้างหน้า -->
+        <a href="?page={{ menus.next_page_number }}{% if category_name %}&category={{ category_name }}{% endif %}" 
+           class="px-3 py-2 border border-gray-300 rounded hover:bg-gray-200 flex items-center">
+            <span class="mr-1 hidden md:inline">Next</span>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+        </a>
+        {% endif %}
+    </div>
+
+    <!-- Popup -->
+    <div id="popup" class="fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg hidden">
+        <span id="popup-message"></span>
+    </div>
 </body>
+
 
 </html>

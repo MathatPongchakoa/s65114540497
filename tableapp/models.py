@@ -21,6 +21,17 @@ class CustomUser(AbstractUser):
     def __str__(self):
         return self.username
 
+from django.db import models
+
+class Zone(models.Model):
+    name = models.CharField(max_length=100)  # ชื่อโซน เช่น "ในร้าน", "นอกร้าน"
+    description = models.TextField(blank=True, null=True)  # คำอธิบายเพิ่มเติมเกี่ยวกับโซน
+    image = models.ImageField(upload_to='zone_images/', blank=True, null=True)  # รูปภาพประกอบโซน (ถ้ามี)
+
+    def __str__(self):
+        return self.name
+
+
 
 class Table(models.Model):
     table_name = models.CharField(max_length=100)
@@ -34,9 +45,12 @@ class Table(models.Model):
         default='available'
     )
     seating_capacity = models.IntegerField(default=4)  # จำนวนคนที่รองรับได้
+    zone = models.ForeignKey(Zone, on_delete=models.SET_NULL, null=True, blank=True)  # เชื่อมกับ Zone
 
     def __str__(self):
-        return f"{self.table_name} ({self.seating_capacity} คน)"
+        return f"{self.table_name} ({self.seating_capacity} คน, {self.zone.name if self.zone else 'ไม่ระบุโซน'})"
+
+
 
 
 class Booking(models.Model):

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Table</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100">
+    <div class="max-w-3xl mx-auto mt-10 bg-white p-6 rounded shadow-lg">
+        <h1 class="text-2xl font-bold mb-6 text-center">เพิ่มโต๊ะใหม่</h1>
+        <form method="POST" action="{% url 'add_table' %}">
+            {% csrf_token %}
+            <div class="mb-4">
+                <label for="table_name" class="block text-sm font-medium text-gray-700">ชื่อโต๊ะ</label>
+                <input type="text" id="table_name" name="table_name" class="mt-1 p-2 border border-gray-300 rounded w-full" required>
+            </div>
+            <div class="mb-4">
+                <label for="seating_capacity" class="block text-sm font-medium text-gray-700">จำนวนที่นั่ง</label>
+                <input type="number" id="seating_capacity" name="seating_capacity" class="mt-1 p-2 border border-gray-300 rounded w-full" min="1" required>
+            </div>
+            <div class="mb-4">
+                <label for="zone" class="block text-sm font-medium text-gray-700">เลือกโซน</label>
+                <select id="zone" name="zone" class="mt-1 p-2 border border-gray-300 rounded w-full">
+                    <option value="" disabled selected>เลือกโซน</option>
+                    {% for zone in zones %}
+                    <option value="{{ zone.id }}">{{ zone.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="flex justify-center">
+                <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">เพิ่มโต๊ะ</button>
+            </div>
+        </form>
+        <div class="mt-4 text-center">
+            <a href="{% url 'table_management' %}" class="text-blue-500 hover:underline">กลับไปหน้าการจัดการโต๊ะ</a>
+        </div>
+    </div>
+</body>
+
+</html>

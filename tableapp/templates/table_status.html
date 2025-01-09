@@ -1,5 +1,4 @@
-{% load custom_filters %} <!-- โหลด custom filters -->
-
+{% load custom_filters %}
 <!DOCTYPE html>
 <html lang="en">
 
@@ -17,12 +16,39 @@
                 window.location.href = `/booking/${tableName}/`;
             }
         }
+
+        function filterZone() {
+            const selectedZone = document.getElementById("zoneFilter").value;
+            const url = new URL(window.location.href);
+            if (selectedZone) {
+                url.searchParams.set("zone", selectedZone);
+            } else {
+                url.searchParams.delete("zone");
+            }
+            window.location.href = url.toString();
+        }
+
+        function openZonePopup(imageUrl, zoneName, description) {
+            const popup = document.getElementById("zonePopup");
+            const popupImage = document.getElementById("popupImage");
+            const popupTitle = document.getElementById("popupTitle");
+            const popupDescription = document.getElementById("popupDescription");
+
+            popupImage.src = imageUrl;
+            popupTitle.textContent = zoneName;
+            popupDescription.textContent = description;
+
+            popup.classList.remove("hidden");
+        }
+
+        function closeZonePopup() {
+            document.getElementById("zonePopup").classList.add("hidden");
+        }
     </script>
 </head>
 
 <body class="bg-gray-100">
-    <!-- Navigation Bar -->
-    <!-- Navigation Bar -->
+    <!-- Navbar -->
     <nav class="bg-red-500 shadow-lg">
         <div class="max-w-7xl mx-auto px-4">
             <div class="flex justify-between h-16">
@@ -32,10 +58,12 @@
                 <div class="flex space-x-4 items-center">
                     <a href="/" class="text-white hover:text-blue-300">Table</a>
                     <a href="/menu/" class="text-white hover:text-blue-300">Menu</a>
-                    <!-- เพิ่มไอคอนตะกร้า -->
                     <a href="/cart/" class="text-white hover:text-blue-300 flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2m1.6 10h9.2m4.8-8H6.4M5.4 5L7.6 16h9.8l1.2-6m-5.2 6v2a2 2 0 01-2 2H9a2 2 0 01-2-2v-2"></path>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 3h2l.4 2m1.6 10h9.2m4.8-8H6.4M5.4 5L7.6 16h9.8l1.2-6m-5.2 6v2a2 2 0 01-2 2H9a2 2 0 01-2-2v-2">
+                            </path>
                         </svg>
                     </a>
                     <a href="/my-bookings/" class="text-white hover:text-blue-300">My Bookings</a>
@@ -53,39 +81,85 @@
         </div>
     </nav>
 
+    <!-- Filters -->
+    <div class="max-w-7xl mx-auto mt-6 flex items-center">
+        <label for="zoneFilter" class="text-gray-700 font-bold mr-4">เลือกโซน:</label>
+        <select id="zoneFilter" class="border border-gray-300 rounded p-2 mr-4" onchange="filterZone()">
+            <option value="">ทั้งหมด</option>
+            {% for zone in zones %}
+            <option value="{{ zone.id }}" {% if selected_zone and selected_zone.id == zone.id %}selected{% endif %}>
+                {{ zone.name }}
+            </option>
+            {% endfor %}
+        </select>
 
-    <h1 class="text-center text-3xl font-bold mb-8 mt-6">สถานะโต๊ะ</h1>
+        {% if selected_zone and selected_zone.image %}
+        <button class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            onclick="openZonePopup('{{ selected_zone.image.url }}', '{{ selected_zone.name }}', '{{ selected_zone.description }}')">
+            ดูภาพตัวอย่าง
+        </button>
+        {% endif %}
+    </div>
 
-    <!-- Legend สำหรับสถานะ -->
-    <div class="text-center my-4">
-        <div class="inline-flex items-center mr-4">
-            <div class="w-4 h-4 border-2 border-green-500"></div>
-            <span class="ml-2 text-sm text-gray-700">ว่าง</span>
-        </div>
-        <div class="inline-flex items-center mr-4">
-            <div class="w-4 h-4 border-2 border-orange-500"></div>
-            <span class="ml-2 text-sm text-gray-700">มีคนนั่ง</span>
-        </div>
-        <div class="inline-flex items-center">
-            <div class="w-4 h-4 border-2 border-blue-500"></div>
-            <span class="ml-2 text-sm text-gray-700">จอง</span>
+    <!-- Popup -->
+    <div id="zonePopup" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-lg p-6 relative max-w-xl">
+            <button onclick="closeZonePopup()" class="absolute top-2 right-2 text-gray-500 hover:text-black">
+                ✖
+            </button>
+            <h2 id="popupTitle" class="text-2xl font-bold text-center mb-4"></h2>
+            <img id="popupImage" src="" alt="Zone Image" class="rounded shadow-lg max-w-full">
+            <p id="popupDescription" class="text-gray-700 text-center mt-4"></p>
         </div>
     </div>
 
-    <!-- สถานะโต๊ะ -->
-    <div class="grid grid-cols-4 gap-4 place-items-center">
-        {% for table in table_data %}
-        <div onclick="handleBookingClick({{ has_active_booking|yesno:'true,false' }}, '{{ table.table_name }}')" class="w-32 h-32 flex flex-col justify-center items-center rounded-lg border-4 cursor-pointer
-                {% if table.table_status == 'available' %}
-                    border-green-500 text-green-500
-                {% elif table.table_status == 'occupied' %}
-                    border-orange-500 text-orange-500
-                {% elif table.table_status == 'booked' %}
-                    border-blue-500 text-blue-500
-                {% endif %}">
-            <span class="text-2xl font-bold">{{ table.table_name }}</span>
-            <span class="text-sm">{{ table.seating_capacity }} ที่นั่ง</span>
+    <!-- Legend -->
+    <div class="max-w-7xl mx-auto mt-6">
+        <div class="flex space-x-4">
+            <div class="flex items-center">
+                <div class="w-4 h-4 bg-green-500 border border-gray-300"></div>
+                <span class="ml-2 text-sm text-gray-700">ว่าง</span>
+            </div>
+            <div class="flex items-center">
+                <div class="w-4 h-4 bg-orange-500 border border-gray-300"></div>
+                <span class="ml-2 text-sm text-gray-700">มีคนนั่ง</span>
+            </div>
+            <div class="flex items-center">
+                <div class="w-4 h-4 bg-blue-500 border border-gray-300"></div>
+                <span class="ml-2 text-sm text-gray-700">จอง</span>
+            </div>
         </div>
+    </div>
+
+    <h1 class="text-center text-3xl font-bold mb-8 mt-6">สถานะโต๊ะ</h1>
+
+    <!-- Table Display -->
+    <div class="grid grid-cols-4 gap-6 place-items-center">
+        {% for table in table_data %}
+        <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            viewBox="0 0 200 200" 
+            class="cursor-pointer w-48 h-48"
+            onclick="handleBookingClick(false, '{{ table.table_name }}')"
+        >
+            <!-- วงกลมใหญ่แสดงโต๊ะ -->
+            <circle 
+                cx="100" cy="100" r="50" 
+                {% if table.table_status == 'available' %} fill="green"
+                {% elif table.table_status == 'occupied' %} fill="orange"
+                {% elif table.table_status == 'booked' %} fill="blue"
+                {% endif %}
+            />
+            <!-- ข้อความชื่อโต๊ะ -->
+            <text x="100" y="105" text-anchor="middle" fill="white" font-size="14" font-weight="bold">
+                {{ table.table_name }}
+            </text>
+
+            <!-- วาดเก้าอี้รอบโต๊ะ -->
+            {% for chair in table.chairs %}
+            <circle cx="{{ chair.x }}" cy="{{ chair.y }}" r="10" fill="#ddd" stroke="black" stroke-width="1" />
+            {% endfor %}
+        </svg>
         {% endfor %}
     </div>
 </body>

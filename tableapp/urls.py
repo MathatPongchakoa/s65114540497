@@ -1,6 +1,7 @@
 from django.urls import path
 from .views import *
 from django.contrib.auth import views as auth_views
+from django.conf.urls.static import static
 
 
 urlpatterns = [
@@ -25,4 +26,17 @@ urlpatterns = [
     path('reset-password-confirm/<uidb64>/<token>/', password_reset_confirm_view, name='password_reset_confirm'),
     path('reset-password-complete/', auth_views.PasswordResetCompleteView.as_view(template_name='password_reset_complete.html'), name='password_reset_complete'),
     
+    path('owner/add-table/', add_table_view, name='add_table'),
+    path('owner/manage-table/<int:table_id>/', manage_table_view, name='manage_table'),
+    path('table-management/', table_management_view, name='table_management'),
+    path('owner/booked-tables/', booked_tables_view, name='booked_tables'),
+    path('change-booking-status/<int:booking_id>/', change_booking_status, name='change_booking_status'),
+
+    path('add-zone/', add_zone_view, name='add_zone'),  # เพิ่มโซน
+    path('zone-management/', zone_management_view, name='zone_management'),  # จัดการโซน
+    path('edit-zone/<int:zone_id>/', edit_zone_view, name='edit_zone'),  # แก้ไขโซน
+    path('delete-zone/<int:zone_id>/', delete_zone_view, name='delete_zone'), 
+    
 ]
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

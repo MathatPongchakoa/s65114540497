@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>จัดการโซน</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<header class="bg-red-500 text-white shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center h-16">
+        <div class="text-2xl font-bold">LOGO</div>
+        <nav class="flex space-x-4">
+            <a href="/table-management/" class="hover:text-gray-300">HOME</a>
+            <a href="#" class="hover:text-gray-300">MENU</a>
+            <a href="#" class="hover:text-gray-300">PROMOTION</a>
+            <a href="/owner/booked-tables/" class="hover:text-gray-300">BOOKED TABLES</a>
+            <a href="/zone-management/" class="hover:text-gray-300">ZONE MANAGE</a> <!-- เพิ่มลิงก์นี้ -->
+        </nav>
+        
+    </div>
+</header>
+
+<body class="bg-gray-100">
+    <div class="max-w-5xl mx-auto mt-10 bg-white p-6 rounded shadow-lg">
+        <h1 class="text-2xl font-bold mb-6 text-center">จัดการโซน</h1>
+        <table class="min-w-full bg-white border border-gray-300">
+            <thead>
+                <tr>
+                    <th class="px-4 py-2">ชื่อโซน</th>
+                    <th class="px-4 py-2">คำอธิบาย</th>
+                    <th class="px-4 py-2">รูปภาพ</th>
+                    <th class="px-4 py-2">การจัดการ</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for zone in zones %}
+                <tr>
+                    <td class="border px-4 py-2">{{ zone.name }}</td>
+                    <td class="border px-4 py-2">{{ zone.description }}</td>
+                    <td class="border px-4 py-2">
+                        {% if zone.image %}
+                        <img src="{{ zone.image.url }}" alt="{{ zone.name }}" class="h-12">
+                        {% else %}
+                        ไม่มีรูปภาพ
+                        {% endif %}
+                    </td>
+                    <td class="border px-4 py-2">
+                        <a href="{% url 'edit_zone' zone.id %}" class="text-blue-500 hover:underline">แก้ไข</a> |
+                        <a href="{% url 'delete_zone' zone.id %}" class="text-red-500 hover:underline">ลบ</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="mt-6 text-center">
+            <a href="{% url 'add_zone' %}" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">เพิ่มโซนใหม่</a>
+        </div>
+    </div>
+</body>
+
+</html>

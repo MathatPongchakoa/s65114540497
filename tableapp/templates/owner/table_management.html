@@ -1,0 +1,97 @@
+{% load custom_filters %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Table Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100">
+    <!-- Header -->
+    <header class="bg-red-500 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 flex justify-between items-center h-16">
+            <div class="text-2xl font-bold">LOGO</div>
+            <nav class="flex space-x-4">
+                <a href="/table-management/" class="hover:text-gray-300">HOME</a>
+                <a href="#" class="hover:text-gray-300">MENU</a>
+                <a href="#" class="hover:text-gray-300">PROMOTION</a>
+                <a href="/owner/booked-tables/" class="hover:text-gray-300">BOOKED TABLES</a>
+                <a href="/zone-management/" class="hover:text-gray-300">ZONE MANAGE</a> <!-- เพิ่มลิงก์นี้ -->
+            </nav>
+            
+            
+        </div>
+    </header>
+
+    <!-- Legend -->
+    <div class="max-w-7xl mx-auto mt-6">
+        <div class="flex space-x-4">
+            <div class="flex items-center">
+                <div class="w-4 h-4 bg-green-500 border border-gray-300"></div>
+                <span class="ml-2 text-sm text-gray-700">ว่าง</span>
+            </div>
+            <div class="flex items-center">
+                <div class="w-4 h-4 bg-orange-500 border border-gray-300"></div>
+                <span class="ml-2 text-sm text-gray-700">มีคนนั่ง</span>
+            </div>
+            <div class="flex items-center">
+                <div class="w-4 h-4 bg-blue-500 border border-gray-300"></div>
+                <span class="ml-2 text-sm text-gray-700">จอง</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table Display -->
+    <h1 class="text-center text-3xl font-bold mt-6 mb-8">สถานะโต๊ะ</h1>
+    <div class="max-w-7xl mx-auto grid grid-cols-3 md:grid-cols-5 gap-6">
+        {% for table in table_data %}
+        <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            viewBox="0 0 200 200" 
+            class="cursor-pointer w-48 h-48"
+            onclick="handleBookingClick('{{ table.table_id }}')"
+
+        >
+            <!-- วงกลมใหญ่แสดงโต๊ะ -->
+            <circle 
+                cx="100" cy="100" r="50" 
+                {% if table.table_status == 'available' %}
+                fill="green"
+                {% elif table.table_status == 'occupied' %}
+                fill="orange"
+                {% elif table.table_status == 'booked' %}
+                fill="blue"
+                {% endif %}
+            />
+            <!-- ข้อความชื่อโต๊ะ -->
+            <text x="100" y="105" text-anchor="middle" fill="white" font-size="14" font-weight="bold">
+                {{ table.table_name }}
+            </text>
+
+            <!-- วาดเก้าอี้รอบโต๊ะ -->
+            {% for chair in table.chairs %}
+            <circle cx="{{ chair.x }}" cy="{{ chair.y }}" r="10" fill="#ddd" stroke="black" stroke-width="1" />
+            {% endfor %}
+        </svg>
+        {% endfor %}
+
+        <!-- Add Table Button -->
+        <a href="/owner/add-table/" class="flex flex-col items-center justify-center border-2 border-green-500 text-green-500 rounded-lg h-32 hover:bg-green-100">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            <span class="mt-2 text-sm font-bold">ADD TABLE</span>
+        </a>
+    </div>
+
+    <script>
+        function handleBookingClick(tableId) {
+            window.location.href = `/owner/manage-table/${tableId}/`;
+        }
+    </script>
+</body>
+
+</html>

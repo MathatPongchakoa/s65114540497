@@ -1,7 +1,7 @@
 import os
 from openpyxl import load_workbook
 from django.conf import settings
-from tableapp.models import CustomUser, Table, Booking, Menu, Category
+from tableapp.models import *
 from datetime import datetime
 from django.core.management.base import BaseCommand
 
@@ -41,11 +41,42 @@ class Command(BaseCommand):
                 else:
                     self.stdout.write(f"Skipping user {username} due to missing password")
 
+        # แผ่นงานสำหรับ Zone
+        if 'Zone' in wb.sheetnames:
+            zone_sheet = wb['Zone']
+            for row in zone_sheet.iter_rows(min_row=2, values_only=True):
+                # ตรวจสอบจำนวนค่าที่อ่านได้
+                if len(row) < 4:
+                    self.stdout.write(f"Skipping row in Zone sheet due to insufficient columns: {row}")
+                    continue
+
+                zone_id, name, description, image = row  # อ่านคอลัมน์ id, name, description, image
+
+                # สร้างหรืออัปเดต Zone
+                zone_instance, created = Zone.objects.get_or_create(
+                    id=zone_id,
+                    defaults={
+                        'name': name,
+                        'description': description,
+                        'image': image,  # เพิ่มภาพในฟิลด์ image
+                    }
+                )
+                if created:
+                    self.stdout.write(f"Created zone: {name}")
+                else:
+                    # อัปเดตข้อมูลโซนถ้าจำเป็น
+                    zone_instance.name = name
+                    zone_instance.description = description
+                    if image:  # ถ้ามีข้อมูลภาพใหม่
+                        zone_instance.image = image
+                    zone_instance.save()
+                    self.stdout.write(f"Updated zone: {name}")
+
         # แผ่นงานสำหรับ Table
         if 'Table' in wb.sheetnames:
             table_sheet = wb['Table']
             for row in table_sheet.iter_rows(min_row=2, values_only=True):
-                table_id, table_name, table_status = row
+                table_id, table_name, table_status, zone_id = row  # เพิ่มการอ่าน zone_id
 
                 # ตรวจสอบว่าค่า table_status ถูกต้อง
                 valid_statuses = ['available', 'occupied', 'booked']
@@ -53,17 +84,31 @@ class Command(BaseCommand):
                     self.stdout.write(f"Invalid table status '{table_status}' for table {table_name}. Skipping...")
                     continue
 
+                # ค้นหา Zone ด้วย zone_id
+                zone = None
+                if zone_id:
+                    zone = Zone.objects.filter(id=zone_id).first()
+                    if not zone:
+                        self.stdout.write(f"Zone ID {zone_id} not found for table {table_name}. Skipping...")
+                        continue
+
+                # สร้างหรืออัปเดต Table
                 table_instance, created = Table.objects.get_or_create(
                     id=table_id,
                     defaults={
                         'table_name': table_name,
                         'table_status': table_status,
+                        'zone': zone,  # เพิ่ม zone ในการสร้าง
                     }
                 )
                 if created:
-                    self.stdout.write(f"Created table: {table_name}")
+                    self.stdout.write(f"Created table: {table_name} in zone {zone.name if zone else 'N/A'}")
                 else:
-                    self.stdout.write(f"Table already exists: {table_name}")
+                    # อัปเดต zone ถ้ามีการเปลี่ยนแปลง
+                    table_instance.zone = zone
+                    table_instance.table_status = table_status
+                    table_instance.save()
+                    self.stdout.write(f"Updated table: {table_name} in zone {zone.name if zone else 'N/A'}")
 
         # แผ่นงานสำหรับ Booking
         if 'Booking' in wb.sheetnames:
@@ -133,7 +178,7 @@ class Command(BaseCommand):
                 else:
                     self.stdout.write(f"Category already exists: {name}")
 
-            # แผ่นงานสำหรับ Menu
+        # แผ่นงานสำหรับ Menu
         if 'Menu' in wb.sheetnames:
             menu_sheet = wb['Menu']
             for row in menu_sheet.iter_rows(min_row=2, values_only=True):
@@ -159,6 +204,5 @@ class Command(BaseCommand):
                     self.stdout.write(f"Created menu item: {food_name}")
                 else:
                     self.stdout.write(f"Menu item already exists: {food_name}")
-
 
         self.stdout.write(self.style.SUCCESS("Data loaded successfully!"))
