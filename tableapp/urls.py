@@ -33,9 +33,14 @@ urlpatterns = [
     path('change-booking-status/<int:booking_id>/', change_booking_status, name='change_booking_status'),
 
     path('add-zone/', add_zone_view, name='add_zone'),  # เพิ่มโซน
+    path('menu-management/', menu_management_view, name='menu_management'),
+    path('add-menu/', add_menu_view, name='add_menu'),
     path('zone-management/', zone_management_view, name='zone_management'),  # จัดการโซน
     path('edit-zone/<int:zone_id>/', edit_zone_view, name='edit_zone'),  # แก้ไขโซน
     path('delete-zone/<int:zone_id>/', delete_zone_view, name='delete_zone'), 
+    path('menu-management/edit/<int:menu_id>/', edit_menu_view, name='edit_menu'),
+
+    path('menu/<int:menu_id>/delete/', delete_menu, name='delete_menu'),
     
 ]
 if settings.DEBUG:

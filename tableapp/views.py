@@ -374,6 +374,7 @@ def menu_view(request):
         'active_booking': active_booking,
     }
     return render(request, 'menu.html', context)
+
 def confirm_booking(request, booking_id):
     booking = get_object_or_404(Booking, id=booking_id)
 
@@ -416,19 +417,20 @@ def add_to_cart(request):
 def cart_view(request):
     try:
         # ดึงข้อมูลตะกร้าของผู้ใช้
-        cart = Cart.objects.get(user=request.user, is_active=True)  # หาตะกร้าของผู้ใช้ที่ active
+        cart = Cart.objects.get(user=request.user, is_active=True)
         cart_items = cart.items.all()  # ดึงรายการสินค้าทั้งหมดในตะกร้า
     except Cart.DoesNotExist:
         cart_items = []  # ถ้าตะกร้าไม่พบ ให้เป็นรายการว่าง
 
-    # คำนวณราคารวม
-    total_price = sum(item.menu.price * item.quantity for item in cart_items)
+    # คำนวณราคารวมจากจำนวนสินค้าและราคาสินค้า
+    total_price = sum(item.menu.price * item.quantity for item in cart_items if item.menu)
 
     context = {
         'cart_items': cart_items,
         'total_price': total_price,
     }
     return render(request, 'cart.html', context)
+
 
 @csrf_exempt
 def update_cart_item(request, item_id):
@@ -689,3 +691,71 @@ def delete_zone_view(request, zone_id):
     zone = get_object_or_404(Zone, id=zone_id)
     zone.delete()
     return redirect('zone_management')
+
+def add_menu_view(request):
+    if request.method == 'POST':
+        food_name = request.POST.get('food_name')
+        price = request.POST.get('price')
+        category_id = request.POST.get('category_id')
+        image = request.FILES.get('image')
+
+        # ตรวจสอบ category
+        try:
+            category = Category.objects.get(id=category_id)
+        except Category.DoesNotExist:
+            messages.error(request, 'หมวดหมู่ที่เลือกไม่ถูกต้อง')
+            return render(request, 'owner/add_menu.html')
+
+        # สร้างเมนูใหม่
+        Menu.objects.create(
+            food_name=food_name,
+            price=price,
+            category=category,
+            image=image
+        )
+        messages.success(request, 'เพิ่มเมนูใหม่สำเร็จ!')
+        return redirect('/menu-management/')  # เปลี่ยนเส้นทางกลับไปยังหน้าเมนูการจัดการ
+
+    # GET method: แสดงแบบฟอร์ม
+    categories = Category.objects.all()
+    return render(request, 'owner/add_menu.html', {'categories': categories})
+
+def menu_management_view(request):
+    menus = Menu.objects.all()
+    for menu in menus:
+        print(menu.image)  # ตรวจสอบ URL รูปภาพ
+    return render(request, 'owner/menu_management.html', {'menus': menus})
+
+def edit_menu_view(request, menu_id):
+    menu = get_object_or_404(Menu, id=menu_id)
+
+    if request.method == 'POST':
+        food_name = request.POST.get('food_name')
+        price = request.POST.get('price')
+        category_name = request.POST.get('category_name')
+        image = request.FILES.get('image')
+
+        # ตรวจสอบหรือสร้าง Category ใหม่
+        category, created = Category.objects.get_or_create(name=category_name)
+
+        # อัปเดตเมนู
+        menu.food_name = food_name
+        menu.price = price
+        menu.category = category
+
+        if image:
+            menu.image = image
+
+        menu.save()
+        messages.success(request, 'แก้ไขเมนูสำเร็จแล้ว')
+        return redirect('/menu-management/')
+
+    categories = Category.objects.all()
+    return render(request, 'owner/edit_menu.html', {'menu': menu, 'categories': categories})
+
+
+
+def delete_menu(request, menu_id):
+    menu = get_object_or_404(Menu, id=menu_id)
+    menu.delete()
+    return redirect('menu_management')

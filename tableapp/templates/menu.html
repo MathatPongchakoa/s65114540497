@@ -7,7 +7,6 @@
     <title>Menu</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        // เพิ่มสินค้าไปยังตะกร้า
         function addToCart(foodId) {
             fetch(`/cart/add/`, {
                 method: "POST",
@@ -31,7 +30,6 @@
                 });
         }
 
-        // ฟังก์ชันแสดง Popup
         function showPopup(message, isError = false) {
             const popup = document.getElementById("popup");
             const popupMessage = document.getElementById("popup-message");
@@ -49,7 +47,7 @@
 
             setTimeout(() => {
                 popup.classList.add("hidden");
-            }, 3000); // ซ่อน Popup หลังจาก 3 วินาที
+            }, 3000);
         }
     </script>
 </head>
@@ -92,17 +90,31 @@
 
     <!-- Navigation for categories -->
     <div class="flex justify-center mb-6">
-        <a href="/menu/" class="bg-yellow-500 text-black px-4 py-2 rounded mx-2">ทั้งหมด</a>
+        <!-- หมวดหมู่ "ทั้งหมด" -->
+        <a href="/menu/" 
+           class="{% if  category_name %}bg-yellow-300{% else %}bg-yellow-500{% endif %} text-black px-4 py-2 rounded mx-2 hover:bg-yellow-400">
+            ทั้งหมด
+        </a>
+    
+        <!-- หมวดหมู่อื่น -->
         {% for category in categories %}
-        <a href="/menu/?category={{ category.name }}" class="bg-yellow-200 px-4 py-2 rounded mx-2">{{ category.name }}</a>
+        <a href="/menu/?category={{ category.name }}" 
+           class="{% if category.name == category_name %}bg-yellow-300 hover:bg-yellow-300{% else %}bg-yellow-500 hover:bg-yellow-400{% endif %} text-black px-4 py-2 rounded mx-2">
+            {{ category.name }}
+        </a>
         {% endfor %}
     </div>
+    
+    
+    
+    
+    
 
     <!-- Menu items -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
         {% for menu in menus %}
         <div class="border p-4 rounded-lg shadow bg-white">
-            <img src="{{ menu.image_url }}" alt="{{ menu.food_name }}" class="w-full h-32 object-cover rounded">
+            <img src="{{ menu.image.url }}" alt="{{ menu.food_name }}" class="w-full h-32 object-cover rounded">
             <div class="flex justify-between items-center mt-4">
                 <div>
                     <h2 class="text-lg font-bold">{{ menu.food_name }}</h2>
@@ -156,6 +168,5 @@
         <span id="popup-message"></span>
     </div>
 </body>
-
 
 </html>

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>จัดการเมนูอาหาร</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        let menuIdToDelete = null;
+
+        function showDeletePopup(menuId, menuName) {
+            menuIdToDelete = menuId;
+            document.getElementById('popup-message').textContent = `คุณแน่ใจหรือไม่ว่าต้องการลบเมนู "${menuName}"?`;
+            document.getElementById('popup').classList.remove('hidden');
+        }
+
+        function hideDeletePopup() {
+            document.getElementById('popup').classList.add('hidden');
+        }
+
+        function confirmDelete() {
+            if (menuIdToDelete) {
+                window.location.href = `/menu-management/delete/${menuIdToDelete}/`;
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-gray-100">
+    <!-- Navbar -->
+    <header class="bg-red-500 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 flex justify-between items-center h-16">
+            <div class="text-2xl font-bold">LOGO</div>
+            <nav class="flex space-x-4">
+                <a href="/" class="hover:text-gray-300">HOME</a>
+                <a href="/menu-management/" class="hover:text-gray-300">MENU</a>
+                <a href="#" class="hover:text-gray-300">PROMOTION</a>
+                <a href="/owner/booked-tables/" class="hover:text-gray-300">BOOKED TABLES</a>
+                <a href="/zone-management/" class="hover:text-gray-300">ZONE MANAGE</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Content -->
+    <div class="max-w-7xl mx-auto mt-10 bg-white p-6 rounded shadow-lg">
+        <h1 class="text-2xl font-bold mb-6 text-center">จัดการเมนูอาหาร</h1>
+        
+        <!-- Menu Grid -->
+        <div class="grid grid-cols-4 gap-6">
+            {% for menu in menus %}
+            <div class="bg-white border border-gray-300 rounded shadow p-4 text-center">
+                {% if menu.image %}
+                <img src="{{ menu.image.url }}" alt="{{ menu.food_name }}" class="w-full h-32 object-cover rounded mb-2">
+                {% else %}
+                <img src="/static/images/default_menu_image.png" alt="Default Image" class="w-full h-32 object-cover rounded mb-2">
+                {% endif %}
+                <h2 class="text-lg font-bold">{{ menu.food_name }}</h2>
+                <p class="text-gray-700">{{ menu.price }} บาท</p>
+                <!-- Edit and Delete Buttons -->
+                <div class="flex justify-center mt-4 space-x-2">
+                    <a href="/menu-management/edit/{{ menu.id }}/" 
+                       class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600">
+                        แก้ไข
+                    </a>
+                    <button onclick="showDeletePopup({{ menu.id }}, '{{ menu.food_name }}')" 
+                            class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600">
+                        ลบ
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+
+            <!-- Add Menu Button -->
+            <div class="flex justify-center items-center border-2 border-dashed border-gray-300 rounded text-center p-4 cursor-pointer hover:bg-gray-100">
+                <a href="/add-menu/" class="text-green-500 text-lg font-bold flex items-center">
+                    <span class="mr-2">+</span> เพิ่มเมนูใหม่
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Popup -->
+    <div id="popup" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center hidden">
+        <div class="bg-gray-200 p-6 rounded-lg shadow-lg max-w-md w-full">
+            <p id="popup-message" class="text-gray-800 text-lg mb-4"></p>
+            <div class="flex justify-end">
+                <button onclick="hideDeletePopup()" 
+                        class="bg-gray-300 text-gray-700 px-4 py-2 rounded mr-2 hover:bg-gray-400">
+                    ยกเลิก
+                </button>
+                <button onclick="confirmDelete()" 
+                        class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
+                    ยืนยัน
+                </button>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

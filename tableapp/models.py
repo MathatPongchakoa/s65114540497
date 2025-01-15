@@ -99,7 +99,7 @@ class Category(models.Model):
 class Menu(models.Model):
     food_name = models.CharField(max_length=100, verbose_name="ชื่ออาหาร")  # ชื่ออาหาร
     price = models.DecimalField(max_digits=6, decimal_places=2, verbose_name="ราคาอาหาร")  # ราคาอาหาร
-    image_url = models.CharField(max_length=255, verbose_name="URL รูปภาพของอาหาร")  # URL รูปภาพของอาหาร
+    image = models.ImageField(upload_to="menu_images/",blank=True, null=True)  # ใช้ ImageField
     category = models.ForeignKey(Category, on_delete=models.CASCADE, verbose_name="ประเภทอาหาร")
 
     def __str__(self):

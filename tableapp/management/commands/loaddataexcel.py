@@ -1,9 +1,12 @@
 import os
+from django.core.files import File
 from openpyxl import load_workbook
 from django.conf import settings
 from tableapp.models import *
 from datetime import datetime
 from django.core.management.base import BaseCommand
+from io import BytesIO
+from django.core.files.base import ContentFile
 
 
 class Command(BaseCommand):
@@ -41,36 +44,56 @@ class Command(BaseCommand):
                 else:
                     self.stdout.write(f"Skipping user {username} due to missing password")
 
-        # แผ่นงานสำหรับ Zone
         if 'Zone' in wb.sheetnames:
             zone_sheet = wb['Zone']
             for row in zone_sheet.iter_rows(min_row=2, values_only=True):
-                # ตรวจสอบจำนวนค่าที่อ่านได้
-                if len(row) < 4:
-                    self.stdout.write(f"Skipping row in Zone sheet due to insufficient columns: {row}")
-                    continue
+                name, description, image_path = row[1:4]
+                self.stdout.write(f"Processing zone: {name}, description: {description}, image_path: {image_path}")
 
-                zone_id, name, description, image = row  # อ่านคอลัมน์ id, name, description, image
+                # ตรวจสอบ path ของไฟล์ภาพ
+                image_file = None
+                if image_path:
+                    full_image_path = os.path.join(settings.MEDIA_ROOT, 'zone_images', image_path)
+                    self.stdout.write(f"Checking image path: {full_image_path}")  # Debug path
+                    if os.path.exists(full_image_path):  # ตรวจสอบว่าไฟล์ภาพมีอยู่จริง
+                        self.stdout.write(f"Image found: {full_image_path}")
+                        try:
+                            # อ่านไฟล์ภาพและสร้าง ContentFile
+                            with open(full_image_path, 'rb') as img_file:
+                                image_content = ContentFile(img_file.read(), name=image_path)
+                                self.stdout.write(f"File object created for image: {image_path}")
+                        except Exception as e:
+                            self.stdout.write(f"Error reading image file '{image_path}': {str(e)}")
+                            continue
+                    else:
+                        self.stdout.write(f"Image not found: {full_image_path}")
 
                 # สร้างหรืออัปเดต Zone
-                zone_instance, created = Zone.objects.get_or_create(
-                    id=zone_id,
-                    defaults={
-                        'name': name,
-                        'description': description,
-                        'image': image,  # เพิ่มภาพในฟิลด์ image
-                    }
-                )
-                if created:
-                    self.stdout.write(f"Created zone: {name}")
-                else:
-                    # อัปเดตข้อมูลโซนถ้าจำเป็น
-                    zone_instance.name = name
-                    zone_instance.description = description
-                    if image:  # ถ้ามีข้อมูลภาพใหม่
-                        zone_instance.image = image
-                    zone_instance.save()
-                    self.stdout.write(f"Updated zone: {name}")
+                try:
+                    zone_instance, created = Zone.objects.get_or_create(
+                        name=name,
+                        defaults={'description': description}
+                    )
+
+                    if created:
+                        self.stdout.write(f"Created zone: {name}")
+                    else:
+                        self.stdout.write(f"Zone already exists: {name}")
+
+                    # ตรวจสอบและบันทึกภาพ
+                    if image_content:
+                        # ตรวจสอบว่าภาพที่อยู่ในฐานข้อมูลตรงกับภาพใหม่หรือไม่
+                        if not zone_instance.image or not zone_instance.image.name.endswith(os.path.basename(image_path)):
+                            zone_instance.image.save(os.path.basename(image_path), image_content, save=True)
+                            self.stdout.write(f"Image saved for zone: {name}")
+                        else:
+                            self.stdout.write(f"Image for zone '{name}' already up-to-date.")
+
+                except Exception as e:
+                    self.stdout.write(f"Error processing zone '{name}': {str(e)}")
+
+
+
 
         # แผ่นงานสำหรับ Table
         if 'Table' in wb.sheetnames:
@@ -178,31 +201,53 @@ class Command(BaseCommand):
                 else:
                     self.stdout.write(f"Category already exists: {name}")
 
+                # แผ่นงานสำหรับ Menu
         # แผ่นงานสำหรับ Menu
         if 'Menu' in wb.sheetnames:
             menu_sheet = wb['Menu']
             for row in menu_sheet.iter_rows(min_row=2, values_only=True):
-                # ข้ามคอลัมน์แรก (id)
-                food_name, price, image_url, category_name = row[1:5]  # ดึง category_name จากคอลัมน์ใน Excel
+                food_name, price, image_path, category_name = row[1:5]
 
-                # ค้นหา Category ด้วยชื่อ (name)
-                category = Category.objects.filter(name=category_name).first()
-                if not category:
-                    self.stdout.write(f"Category '{category_name}' not found. Skipping menu item '{food_name}'.")
-                    continue
+                # ตรวจสอบหรือสร้าง Category
+                category, _ = Category.objects.get_or_create(name=category_name)
 
-                # สร้างเมนู
+                # ค้นหาหรือสร้าง Menu โดยไม่มี image ก่อน
                 menu_instance, created = Menu.objects.get_or_create(
-                    food_name=food_name,
-                    defaults={
-                        'price': price,
-                        'image_url': image_url,
-                        'category': category,  # ใช้ ForeignKey ที่สัมพันธ์กับ Category
-                    }
-                )
+                        food_name=food_name,
+                        defaults={
+                            'price': price,
+                            'category': category,
+                            'image': image_path,  # เพิ่มตรงนี้
+                        }
+                    )
+
+                # ตรวจสอบว่าเมนูยังไม่มี image และ image_path ถูกต้อง
+                if image_path:
+                    full_image_path = os.path.join(settings.MEDIA_ROOT, image_path)
+                    print(f"Checking image path: {full_image_path}")  # Debug path
+                    if os.path.exists(full_image_path):
+                        try:
+                            # อัปเดตเฉพาะกรณีที่ไม่มีภาพเดิม
+                            if not menu_instance.image or not menu_instance.image.name.endswith(image_path):
+                                with open(full_image_path, 'rb') as img_file:
+                                    django_file = File(img_file)
+                                    menu_instance.image.save(os.path.basename(image_path), django_file, save=True)
+                                    print(f"Image saved for menu: {food_name}")
+                        except Exception as e:
+                            print(f"Error saving image for menu '{food_name}': {str(e)}")
+                    else:
+                        print(f"Image not found: {full_image_path}")
+
+
+
                 if created:
-                    self.stdout.write(f"Created menu item: {food_name}")
+                    print(f"Created menu item: {food_name}")
                 else:
-                    self.stdout.write(f"Menu item already exists: {food_name}")
+                    print(f"Menu item already exists: {food_name}")
+
+
+
+
+
 
         self.stdout.write(self.style.SUCCESS("Data loaded successfully!"))

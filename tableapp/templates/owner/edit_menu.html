@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>แก้ไขเมนู</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100">
+    <!-- Header -->
+    <header class="bg-red-500 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold">JUST FOOD</h1>
+        </div>
+    </header>
+
+    <!-- Form Container -->
+    <div class="max-w-4xl mx-auto bg-white shadow-md rounded-lg mt-10 p-8">
+        <h2 class="text-2xl font-bold text-center mb-6">แก้ไขเมนูอาหาร</h2>
+        <form method="POST" enctype="multipart/form-data" class="space-y-6">
+            {% csrf_token %}
+            
+            <!-- Food Name -->
+            <div>
+                <label for="food_name" class="block text-gray-700 font-medium mb-2">ชื่อเมนู</label>
+                <input type="text" id="food_name" name="food_name" value="{{ menu.food_name }}" 
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500" required>
+            </div>
+
+            <!-- Price -->
+            <div>
+                <label for="price" class="block text-gray-700 font-medium mb-2">ราคา</label>
+                <input type="number" id="price" name="price" value="{{ menu.price }}" 
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500" required>
+            </div>
+
+            <!-- Category -->
+            <div>
+                <label for="category_name" class="block text-gray-700 font-medium mb-2">หมวดหมู่</label>
+                <input type="text" id="category_name" name="category_name" 
+                       value="{{ menu.category.name }}" 
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500" required>
+                <p class="text-sm text-gray-500 mt-1">กรุณากรอกหมวดหมู่ใหม่ หรือใช้หมวดหมู่เดิม</p>
+            </div>
+
+            <!-- Image -->
+            <div>
+                <label for="image" class="block text-gray-700 font-medium mb-2">รูปภาพ</label>
+                <input type="file" id="image" name="image" 
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500">
+                {% if menu.image %}
+                <div class="mt-4">
+                    <img src="{{ menu.image.url }}" alt="{{ menu.food_name }}" class="w-32 h-32 object-cover rounded-lg">
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Buttons -->
+            <div class="flex justify-end space-x-4">
+                <a href="/menu-management/" 
+                   class="bg-gray-300 text-gray-700 font-bold py-2 px-6 rounded-lg hover:bg-gray-400">
+                    ย้อนกลับ
+                </a>
+                <button type="submit" 
+                        class="bg-red-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-red-600 focus:ring-2 focus:ring-red-500">
+                    บันทึก
+                </button>
+            </div>
+        </form>
+    </div>
+</body>
+
+</html>
