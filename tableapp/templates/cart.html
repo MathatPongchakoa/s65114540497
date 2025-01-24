@@ -17,9 +17,6 @@
             popupMessage.textContent = message;
             popup.classList.remove("hidden");
 
-            popup.classList.add("bg-gray-200");
-            confirmButton.classList.remove("hidden");
-
             if (isError) {
                 confirmButton.classList.add("hidden");
             } else {
@@ -37,16 +34,12 @@
             };
         }
 
-        // ฟังก์ชันปิด Popup
         function closePopup() {
-            const popup = document.getElementById("popup");
-            popup.classList.add("hidden");
+            document.getElementById("popup").classList.add("hidden");
         }
 
-        // ฟังก์ชันลดจำนวนสินค้า
         function decreaseQuantity(itemId, quantity) {
             if (quantity === 1) {
-                // แสดง Popup เมื่อมีสินค้า 1 ชิ้น
                 showPopup("คุณแน่ใจว่าต้องการลบสินค้าชิ้นนี้หรือไม่?", false, () => {
                     updateCartItem(itemId, "remove");
                 });
@@ -55,20 +48,16 @@
             }
         }
 
-        // ฟังก์ชันเพิ่มจำนวนสินค้า
         function increaseQuantity(itemId) {
             updateCartItem(itemId, "increase");
         }
 
-        // ฟังก์ชันลบสินค้า
         function removeItem(itemId) {
-            // แสดง Popup ยืนยันการลบสินค้า
             showPopup("คุณแน่ใจว่าต้องการลบสินค้าชิ้นนี้หรือไม่?", false, () => {
                 updateCartItem(itemId, "remove");
             });
         }
 
-        // ฟังก์ชันอัปเดตสินค้าในตะกร้า
         function updateCartItem(itemId, action) {
             fetch(`/cart/update/${itemId}/`, {
                 method: "POST",
@@ -78,62 +67,157 @@
                 },
                 body: JSON.stringify({ action: action })
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    location.reload(); // อัปเดตหน้า
-                } else {
-                    showPopup(data.error || "เกิดข้อผิดพลาด", true);
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        showPopup(data.error || "เกิดข้อผิดพลาด", true);
+                    }
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                    showPopup("เกิดข้อผิดพลาดในการเชื่อมต่อ", true);
+                });
+        }
+
+        function checkReservationBeforeOrder() {
+            fetch('/cart/check-reservation/', {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": "{{ csrf_token }}"
                 }
             })
-            .catch(error => {
-                console.error("Error:", error);
-                showPopup("เกิดข้อผิดพลาดในการเชื่อมต่อ", true);
-            });
+                .then(response => response.json())
+                .then(data => {
+                    if (data.has_reservation) {
+                        confirmOrder();
+                    } else {
+                        showPopup("กรุณาจองโต๊ะก่อนยืนยันการสั่งอาหาร", true);
+                    }
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                    showPopup("เกิดข้อผิดพลาดในการเชื่อมต่อ", true);
+                });
+        }
+
+        function confirmOrder() {
+            fetch('/cart/confirm-order/', {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": "{{ csrf_token }}"
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showPopup("การสั่งซื้อสำเร็จ!", false, () => {
+                            window.location.href = '/order-summary/';
+                        });
+                    } else {
+                        showPopup(data.error || "เกิดข้อผิดพลาด", true);
+                    }
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                    showPopup("เกิดข้อผิดพลาดในการเชื่อมต่อ", true);
+                });
         }
     </script>
 </head>
 
 <body class="bg-gray-100">
-    <div class="max-w-3xl mx-auto mt-10 bg-white p-6 rounded shadow-lg">
-        <h1 class="text-2xl font-bold mb-6">ตะกร้าของฉัน</h1>
-        <div>
-            {% if cart_items %}
-                <table class="w-full border-collapse border border-gray-300">
-                    <thead>
-                        <tr class="bg-gray-200">
-                            <th class="border border-gray-300 px-4 py-2">ชื่อเมนู</th>
-                            <th class="border border-gray-300 px-4 py-2">จำนวน</th>
-                            <th class="border border-gray-300 px-4 py-2">ราคา</th>
-                            <th class="border border-gray-300 px-4 py-2">การจัดการ</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in cart_items %}
-                            <tr>
-                                <td class="border border-gray-300 px-4 py-2">{{ item.menu.food_name }}</td>
-                                <td class="border border-gray-300 px-4 py-2 text-center">
-                                    <button onclick="decreaseQuantity({{ item.id }}, {{ item.quantity }})" class="bg-red-500 text-white px-2 py-1 rounded">-</button>
-                                    <span class="mx-2">{{ item.quantity }}</span>
-                                    <button onclick="increaseQuantity({{ item.id }})" class="bg-green-500 text-white px-2 py-1 rounded">+</button>
-                                </td>
-                                <td class="border border-gray-300 px-4 py-2 text-center">{{ total_price|floatformat:2 }}</td>
-                                <td class="border border-gray-300 px-4 py-2 text-center">
-                                    <button onclick="removeItem({{ item.id }})" class="bg-red-500 text-white px-2 py-1 rounded">ลบ</button>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-                <div class="mt-4">
-                    <h2 class="text-lg font-bold">ยอดรวม: {{ total_price|floatformat:2 }} บาท</h2>
+    <!-- Navbar -->
+    <nav class="bg-red-500 shadow-lg">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <a href="#" class="text-2xl font-bold text-white">JustFood</a>
                 </div>
-            {% else %}
-                <p class="text-center text-gray-500">ไม่มีสินค้าในตะกร้า</p>
-            {% endif %}
+                <div class="flex space-x-4 items-center">
+                    <a href="/" class="text-white hover:text-blue-300">Table</a>
+                    <a href="/menu/" class="text-white hover:text-blue-300">Menu</a>
+                    <a href="/cart/" class="text-white hover:text-blue-300 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 3h2l.4 2m1.6 10h9.2m4.8-8H6.4M5.4 5L7.6 16h9.8l1.2-6m-5.2 6v2a2 2 0 01-2 2H9a2 2 0 01-2-2v-2">
+                            </path>
+                        </svg>
+                    </a>
+                    <a href="/my-bookings/" class="text-white hover:text-blue-300">My Bookings</a>
+                    {% if user.is_authenticated %}
+                    <span class="text-white">Hello, {{ user.username }}</span>
+                    <form method="POST" action="{% url 'logout' %}" class="inline">
+                        {% csrf_token %}
+                        <button type="submit" class="text-white hover:text-blue-300 ml-2">Logout</button>
+                    </form>
+                    {% else %}
+                    <a href="/login/" class="text-white hover:text-blue-300">Login</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-3xl mx-auto mt-10 bg-white p-6 rounded shadow-lg">
+        <h1 class="text-2xl font-bold mb-6 text-center">ตะกร้าของฉัน</h1>
+        {% if cart_items %}
+        <table class="w-full border-collapse border border-gray-300">
+            <thead>
+                <tr class="bg-gray-200">
+                    <th class="border border-gray-300 px-4 py-2">ชื่อเมนู</th>
+                    <th class="border border-gray-300 px-4 py-2">จำนวน</th>
+                    <th class="border border-gray-300 px-4 py-2">ราคา</th>
+                    <th class="border border-gray-300 px-4 py-2">การจัดการ</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in cart_items %}
+                <tr>
+                    <td class="border border-gray-300 px-4 py-2">{{ item.menu.food_name }}</td>
+                    <td class="border border-gray-300 px-4 py-2 text-center">
+                        <button onclick="decreaseQuantity({{ item.id }}, {{ item.quantity }})"
+                            class="bg-red-500 text-white px-2 py-1 rounded">-</button>
+                        <span class="mx-2">{{ item.quantity }}</span>
+                        <button onclick="increaseQuantity({{ item.id }})"
+                            class="bg-green-500 text-white px-2 py-1 rounded">+</button>
+                    </td>
+                    <td class="border border-gray-300 px-4 py-2 text-center">{{ item.total_price|floatformat:2 }} บาท</td>
+                    <td class="border border-gray-300 px-4 py-2 text-center">
+                        <button onclick="removeItem({{ item.id }})"
+                            class="bg-red-500 text-white px-2 py-1 rounded">ลบ</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="mt-4">
+            <h2 class="text-lg font-bold text-center">ยอดรวม: {{ total_price|floatformat:2 }} บาท</h2>
         </div>
         <div class="mt-4 text-center">
-            <a href="/menu/" class="text-blue-500 hover:underline">เพิ่มสินค้า</a>
+            <a href="/menu/" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                เพิ่มสินค้า
+            </a>
+        </div>
+        {% else %}
+        <p class="text-center text-gray-500">ไม่มีสินค้าในตะกร้า</p>
+        <div class="mt-4 text-center">
+            <a href="/menu/" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                เพิ่มสินค้า
+            </a>
+        </div>
+        {% endif %}
+
+        <div class="mt-4 text-center">
+            <button onclick="checkReservationBeforeOrder()" 
+                class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                ยืนยันการสั่งอาหาร
+            </button>
         </div>
     </div>
 
@@ -142,12 +226,8 @@
         <div class="bg-gray-200 p-6 rounded-lg shadow-lg max-w-md w-full">
             <p id="popup-message" class="text-gray-800 text-lg mb-4"></p>
             <div class="flex justify-end">
-                <button id="cancelPopupButton" class="bg-gray-300 text-gray-700 px-4 py-2 rounded mr-2">
-                    ยกเลิก
-                </button>
-                <button id="confirmPopupButton" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
-                    ยืนยัน
-                </button>
+                <button id="cancelPopupButton" class="bg-gray-300 text-gray-700 px-4 py-2 rounded mr-2">ยกเลิก</button>
+                <button id="confirmPopupButton" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">ยืนยัน</button>
             </div>
         </div>
     </div>

@@ -18,7 +18,6 @@ urlpatterns = [
     path('cart/add/', add_to_cart, name='add_to_cart'),
     path('cart/', cart_view, name='cart'),
     path('cart/update/<int:item_id>/', update_cart_item, name='update_cart_item'),
-    path('cart/confirm/', confirm_order, name='confirm_order'),
     path('order/success/<int:order_id>/', order_success_view, name='order_success'),
 
     path('reset-password/', auth_views.PasswordResetView.as_view(template_name='password_reset.html'), name='reset_password'),
@@ -41,6 +40,12 @@ urlpatterns = [
     path('menu-management/edit/<int:menu_id>/', edit_menu_view, name='edit_menu'),
 
     path('menu/<int:menu_id>/delete/', delete_menu, name='delete_menu'),
+    path('cart/check-reservation/', check_reservation, name='check_reservation'),
+    path('cart/confirm-order/', confirm_orders, name='confirm_order'),
+    path('order-summary/', order_summary, name='order_summary'),
+    path('order-management/', order_management, name='order_management'),
+     path('order/update-status/<int:order_id>/<str:new_status>/', update_order_status, name='update_order_status'),
+    
     
 ]
 if settings.DEBUG:

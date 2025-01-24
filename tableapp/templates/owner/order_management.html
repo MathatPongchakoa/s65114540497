@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100">
+    <!-- Header -->
+    <header class="bg-red-500 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 flex justify-between items-center h-16">
+            <div class="text-2xl font-bold">LOGO</div>
+            <nav class="flex space-x-4">
+                <a href="/table-management/" class="hover:text-gray-300">HOME</a>
+                <a href="/menu-management/" class="hover:text-gray-300">MENU</a>
+                <a href="#" class="hover:text-gray-300">PROMOTION</a>
+                <a href="/owner/booked-tables/" class="hover:text-gray-300">BOOKED TABLES</a>
+                <a href="/zone-management/" class="hover:text-gray-300">ZONE MANAGE</a>
+                <a href="/order-management/" class="hover:text-gray-300">ORDER MANAGEMENT</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Title -->
+    <h1 class="text-center text-3xl font-bold mt-6 mb-8">รายการออเดอร์</h1>
+
+    <!-- Order Table -->
+    <div class="max-w-7xl mx-auto bg-white p-6 rounded-lg shadow-md">
+        {% if orders %}
+        <table class="w-full border-collapse border border-gray-300">
+            <thead>
+                <tr class="bg-gray-200">
+                    <th class="border border-gray-300 px-4 py-2">หมายเลขออเดอร์</th>
+                    <th class="border border-gray-300 px-4 py-2">ลูกค้า</th>
+                    <th class="border border-gray-300 px-4 py-2">โต๊ะ</th>
+                    <th class="border border-gray-300 px-4 py-2">รายการอาหาร</th>
+                    <th class="border border-gray-300 px-4 py-2">ยอดรวม</th>
+                    <th class="border border-gray-300 px-4 py-2">สถานะ</th>
+                    <th class="border border-gray-300 px-4 py-2">วันที่</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                <tr>
+                    <td class="border border-gray-300 px-4 py-2 text-center">{{ order.id }}</td>
+                    <td class="border border-gray-300 px-4 py-2">{{ order.user.username }}</td>
+                    <td class="border border-gray-300 px-4 py-2 text-center">{{ order.table_name }}</td>
+                    <td class="border border-gray-300 px-4 py-2">
+                        <ul>
+                            {% for item in order.items.all %}
+                            <li>{{ item.menu }} (x{{ item.quantity }})</li>
+                            {% endfor %}
+                        </ul>
+                    </td>
+                    <td class="border border-gray-300 px-4 py-2 text-right">{{ order.total_price|floatformat:2 }} บาท</td>
+                    <td class="border border-gray-300 px-4 py-2 text-center">
+                        <span class="px-2 py-1 rounded 
+                            {% if order.status == 'pending' %}bg-yellow-200 text-yellow-700{% endif %}
+                            {% if order.status == 'in_progress' %}bg-blue-200 text-blue-700{% endif %}
+                            {% if order.status == 'completed' %}bg-green-200 text-green-700{% endif %}
+                            {% if order.status == 'cancelled' %}bg-red-200 text-red-700{% endif %}">
+                            {{ order.get_status_display }}
+                        </span>
+                        {% if order.status == 'in_progress' %}
+                        <form method="post" action="{% url 'update_order_status' order.id 'served' %}" class="mt-2">
+                            {% csrf_token %}
+                            <button type="submit" class="bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600">
+                                เสิร์ฟแล้ว
+                            </button>
+                        </form>
+                        {% elif order.status == 'served' %}
+                        <form method="post" action="{% url 'update_order_status' order.id 'completed' %}" class="mt-2">
+                            {% csrf_token %}
+                            <button type="submit" class="bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600">
+                                เสร็จสิ้น
+                            </button>
+                        </form>
+                        {% endif %}
+                    </td>
+                    
+                    <td class="border border-gray-300 px-4 py-2 text-center">
+                        {{ order.booking_date|date:"d/m/Y" }} {{ order.booking_time|time:"H:i" }}
+                    </td>
+                    
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Pagination -->
+        <div class="mt-4 flex justify-center">
+            {% if orders.has_previous %}
+            <a href="?page={{ orders.previous_page_number }}" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 mx-1">
+                ก่อนหน้า
+            </a>
+            {% endif %}
+
+            <span class="px-4 py-2">{{ orders.number }} / {{ orders.paginator.num_pages }}</span>
+
+            {% if orders.has_next %}
+            <a href="?page={{ orders.next_page_number }}" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 mx-1">
+                ถัดไป
+            </a>
+            {% endif %}
+        </div>
+
+        {% else %}
+        <p class="text-center text-gray-500">ไม่มีออเดอร์</p>
+        {% endif %}
+    </div>
+</body>
+
+</html>

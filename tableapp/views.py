@@ -118,7 +118,7 @@ def booking_view(request, table_name):
                 return JsonResponse({"success": False, "message": "เวลานี้โต๊ะถูกจองแล้ว"})
 
             # สร้างการจองใหม่
-            Booking.objects.create(
+            new_booking = Booking.objects.create(
                 table=table,
                 booking_date=booking_start.date(),
                 booking_time=booking_start.time(),
@@ -128,10 +128,14 @@ def booking_view(request, table_name):
             )
 
             # อัปเดตสถานะโต๊ะ
-            # เงื่อนไขเพิ่มเติม: ไม่เปลี่ยนสถานะโต๊ะหากสถานะปัจจุบันคือ "occupied"
             if table.table_status != "occupied":
                 table.table_status = "booked"
                 table.save()
+
+            # อัปเดต Cart ของผู้ใช้
+            cart, created = Cart.objects.get_or_create(user=request.user, is_active=True)
+            cart.table = table
+            cart.save()
 
             return JsonResponse({"success": True, "message": "จองโต๊ะสำเร็จ!"})
 
@@ -157,7 +161,6 @@ def booking_view(request, table_name):
 
     return render(request, "booking.html", context)
 
-
 @login_required
 def cancel_booking(request):
     if request.method == 'POST':
@@ -172,6 +175,11 @@ def cancel_booking(request):
         ).first()
         if related_order:
             related_order.delete()
+
+        # ลบ Cart ทั้งหมดที่เกี่ยวข้องกับผู้ใช้
+        carts = Cart.objects.filter(user=request.user)  # ไม่กรอง is_active
+        if carts.exists():
+            carts.delete()
 
         # ตรวจสอบการจองอื่นที่ยัง active
         table = booking.table
@@ -379,11 +387,31 @@ def confirm_booking(request, booking_id):
     booking = get_object_or_404(Booking, id=booking_id)
 
     if request.method == 'POST':
-        booking.status = 'มีคนนั่ง'
+        # เปลี่ยนสถานะการจองเป็น "มีคนนั่ง"
+        booking.status = 'occupied'
         booking.save()
-        return JsonResponse({'success': True, 'message': 'เปลี่ยนสถานะเป็นมีคนนั่งแล้ว'})
+
+        # ตรวจสอบสถานะโต๊ะ
+        table = booking.table
+        if table.table_status != "occupied":
+            table.table_status = "occupied"  # เปลี่ยนสถานะโต๊ะเป็น "occupied"
+            table.save()
+
+        # อัปเดตสถานะออเดอร์ที่เกี่ยวข้อง
+        related_order = Order.objects.filter(
+            user=booking.user,
+            table_name=table.table_name,
+            booking_start__date=booking.booking_date
+        ).first()
+        if related_order and related_order.status == 'pending':
+            related_order.status = 'in_progress'
+            related_order.save()
+
+        return JsonResponse({'success': True, 'message': 'เปลี่ยนสถานะเป็นมีคนนั่งและเริ่มเตรียมออเดอร์แล้ว'})
     else:
         return JsonResponse({'success': False, 'message': 'Method not allowed'}, status=405)
+
+
     
 @login_required
 @csrf_exempt
@@ -414,22 +442,23 @@ def add_to_cart(request):
             return JsonResponse({"success": False, "message": "เมนูไม่พบ"}, status=404)
     return JsonResponse({"success": False, "message": "Invalid request method"}, status=405)
 
+@login_required
 def cart_view(request):
-    try:
-        # ดึงข้อมูลตะกร้าของผู้ใช้
-        cart = Cart.objects.get(user=request.user, is_active=True)
-        cart_items = cart.items.all()  # ดึงรายการสินค้าทั้งหมดในตะกร้า
-    except Cart.DoesNotExist:
-        cart_items = []  # ถ้าตะกร้าไม่พบ ให้เป็นรายการว่าง
+    cart = Cart.objects.filter(user=request.user, is_active=True).first()
+    cart_items = cart.items.all() if cart else []
 
-    # คำนวณราคารวมจากจำนวนสินค้าและราคาสินค้า
-    total_price = sum(item.menu.price * item.quantity for item in cart_items if item.menu)
+    # คำนวณ total_price สำหรับแต่ละ item และรวมทั้งหมด
+    for item in cart_items:
+        item.total_price = item.menu.price * item.quantity  # คำนวณราคาสินค้าแต่ละชิ้น
+
+    total_price = sum(item.total_price for item in cart_items)
 
     context = {
-        'cart_items': cart_items,
-        'total_price': total_price,
+        "cart_items": cart_items,
+        "total_price": total_price,
     }
-    return render(request, 'cart.html', context)
+    return render(request, "cart.html", context)
+
 
 
 @csrf_exempt
@@ -461,61 +490,6 @@ def update_cart_item(request, item_id):
             return JsonResponse({"success": False, "error": str(e)})
 
     return JsonResponse({"success": False, "error": "Invalid request method"})
-
-@login_required
-def confirm_order(request):
-    if request.method == "POST":
-        # ดึงข้อมูลการจองโต๊ะของผู้ใช้
-        active_booking = Booking.objects.filter(
-            user=request.user,
-            status="pending"  # หรือสถานะที่ใช้แยกการจองโต๊ะ
-        ).first()
-
-        if not active_booking:
-            return JsonResponse({
-                "success": False,
-                "message": "คุณต้องจองโต๊ะก่อนที่จะยืนยันคำสั่งซื้อ"
-            }, status=403)
-
-        # ดึงข้อมูลตะกร้าของผู้ใช้
-        cart = Cart.objects.filter(user=request.user, is_active=True).first()
-        if not cart or not cart.items.exists():
-            return JsonResponse({
-                "success": False,
-                "message": "ไม่มีสินค้าในตะกร้าของคุณ"
-            }, status=400)
-
-        # คำนวณยอดรวม
-        total_price = sum(
-            item.menu.price * item.quantity for item in cart.items.all()
-        )
-
-        # แปลง booking_start และ booking_end ให้เป็น timezone-aware datetime
-        booking_start = timezone.make_aware(
-            datetime.combine(active_booking.booking_date, active_booking.booking_time)
-        )
-        booking_end = booking_start + timedelta(hours=1)  # สมมติระยะเวลาการจอง 1 ชั่วโมง
-
-        # สร้างคำสั่งซื้อ
-        order = Order.objects.create(
-            user=request.user,
-            table_name=active_booking.table.table_name,  # ดึงชื่อโต๊ะจากการจอง
-            booking_start=booking_start,
-            booking_end=booking_end,
-            total_price=total_price
-        )
-
-        # ลบตะกร้า หรือเปลี่ยนสถานะให้ไม่ active
-        cart.is_active = False
-        cart.save()
-
-        return JsonResponse({
-            "success": True,
-            "message": "ยืนยันคำสั่งซื้อสำเร็จ!",
-            "order_id": order.id
-        })
-
-    return JsonResponse({"success": False, "message": "Invalid request method"}, status=405)
 
 def order_success_view(request, order_id):
     return render(request, 'order_success.html', {'order_id': order_id})
@@ -629,23 +603,61 @@ def booked_tables_view(request):
     return render(request, 'owner/booked_tables.html', {'table_data': table_data})
 
 
-
 @login_required
 def change_booking_status(request, booking_id):
     booking = get_object_or_404(Booking, id=booking_id)
 
     if booking.status == "pending":
-        # เปลี่ยนสถานะการจองเป็น "occupied"
+        # เปลี่ยนสถานะการจอง
         booking.status = "occupied"
         booking.save()
+        print(f"Debug: Booking ID {booking_id} status updated to 'occupied'.")
 
         # ตรวจสอบสถานะโต๊ะ
         table = booking.table
         if table.table_status != "occupied":
-            table.table_status = "occupied"  # เปลี่ยนสถานะโต๊ะเป็น "occupied" เฉพาะเมื่อยังไม่ได้ใช้งาน
+            table.table_status = "occupied"
             table.save()
+            print(f"Debug: Table {table.table_name} status updated to 'occupied'.")
+
+        # แสดง Debug ข้อมูลที่เกี่ยวข้องกับ Booking และ Order
+        print(f"Debug: Booking User: {booking.user.username}")
+        print(f"Debug: Booking Table Name: {table.table_name}")
+        print(f"Debug: Booking Date: {booking.booking_date}")
+
+        # ใช้ booking.booking_date โดยตรงหากเป็น datetime.date
+        related_orders = Order.objects.filter(
+            user=booking.user,
+            table_name=table.table_name,
+            booking_start__date=booking.booking_date  # ไม่ใช้ localtime เนื่องจากเป็น date
+        )
+
+        # เพิ่ม Debug Log เพื่อแสดง Query SQL
+        print(f"Debug: Related Orders Query: {related_orders.query}")
+
+        # ตรวจสอบและอัปเดตออเดอร์
+        if related_orders.exists():
+            for order in related_orders:
+                print(f"Debug: Found Order ID {order.id} with Status {order.status}")
+                if order.status == "pending":
+                    order.status = "in_progress"
+                    order.save()
+                    print(f"Debug: Order ID {order.id} status updated to 'in_progress'.")
+        else:
+            # Debug ว่าข้อมูลที่ส่งไปเปรียบเทียบมีอะไรบ้าง
+            print(f"Debug: No related order found. Debugging fields:")
+            print(f" - User ID: {booking.user.id}")
+            print(f" - Table Name: {table.table_name}")
+            print(f" - Booking Date: {booking.booking_date}")
+            all_orders = Order.objects.all()
+            for order in all_orders:
+                print(f" - Order ID: {order.id}, User: {order.user.username}, Table: {order.table_name}, Start: {order.booking_start}")
 
     return redirect('booked_tables')
+
+
+
+
 
 
 @login_required
@@ -759,3 +771,108 @@ def delete_menu(request, menu_id):
     menu = get_object_or_404(Menu, id=menu_id)
     menu.delete()
     return redirect('menu_management')
+
+def check_reservation(request):
+    if request.user.is_authenticated:
+        # ใช้ related_name เพื่อเข้าถึงการจอง
+        booking = request.user.bookings.filter(status='pending').first()
+        if booking:
+            return JsonResponse({
+                "has_reservation": True,
+                "table_name": booking.table.table_name
+            })
+    return JsonResponse({"has_reservation": False})
+
+@login_required
+def confirm_orders(request):
+    if request.method == "POST":
+        if not request.user.is_authenticated:
+            return JsonResponse({"success": False, "error": "กรุณาเข้าสู่ระบบก่อนทำการสั่งซื้อ"}, status=401)
+
+        try:
+            cart = Cart.objects.get(user=request.user, is_active=True)
+        except Cart.DoesNotExist:
+            return JsonResponse({"success": False, "error": "ไม่มีตะกร้าที่ใช้งานอยู่"}, status=404)
+
+        if not cart.table:
+            return JsonResponse({"success": False, "error": "กรุณาจองโต๊ะก่อนทำการสั่งซื้อ"}, status=400)
+
+        # ดึง Booking ที่เกี่ยวข้อง
+        try:
+            booking = Booking.objects.get(user=request.user, table=cart.table, status="pending")
+        except Booking.DoesNotExist:
+            return JsonResponse({"success": False, "error": "ไม่พบการจองที่เกี่ยวข้อง"}, status=404)
+
+        # ใช้เวลา booking_start และ booking_end จาก Booking
+        booking_start = timezone.make_aware(datetime.combine(booking.booking_date, booking.booking_time))
+        booking_end = timezone.make_aware(datetime.combine(booking.booking_date, booking.booking_end_time))
+
+        total_price = sum(item.menu.price * item.quantity for item in cart.items.all())
+        order = Order.objects.create(
+            user=request.user,
+            table_name=cart.table.table_name,
+            booking_start=booking_start,
+            booking_end=booking_end,
+            total_price=total_price
+        )
+
+        for item in cart.items.all():
+            OrderItem.objects.create(
+                order=order,
+                menu=item.menu.food_name,
+                price=item.menu.price,
+                quantity=item.quantity
+            )
+
+        cart.is_active = False
+        cart.items.all().delete()
+        cart.save()
+
+        return JsonResponse({"success": True, "order_id": order.id, "message": "การสั่งซื้อสำเร็จ"})
+    return JsonResponse({"success": False, "error": "Invalid request method"}, status=405)
+
+
+@login_required(login_url='login')
+def order_summary(request):
+    # ดึงข้อมูลคำสั่งซื้อของผู้ใช้
+    orders = Order.objects.filter(user=request.user).order_by('-created_at')
+    
+    context = {
+        "orders": orders,
+    }
+    return render(request, "order_summary.html", context)
+
+@login_required(login_url='login')
+def order_management(request):
+    orders = Order.objects.prefetch_related('items').all().order_by('-created_at')
+    
+    # Mapping Order กับ Booking
+    for order in orders:
+        related_booking = Booking.objects.filter(
+            table__table_name=order.table_name,
+            user=order.user,
+            booking_date=order.booking_start.date()  # Match วันที่
+        ).first()
+        if related_booking:
+            order.booking_time = related_booking.booking_time
+            order.booking_date = related_booking.booking_date
+
+    context = {
+        "orders": orders,
+    }
+    return render(request, "owner/order_management.html", context)
+
+@login_required
+def update_order_status(request, order_id, new_status):
+    # ดึงข้อมูล Order ที่ต้องการแก้ไข
+    order = get_object_or_404(Order, id=order_id)
+
+    # ตรวจสอบว่าสถานะที่ส่งมาเป็นสถานะที่อนุญาต
+    if new_status in dict(Order.STATUS_CHOICES):
+        order.status = new_status
+        order.save()
+        messages.success(request, f"สถานะออเดอร์ ID {order_id} เปลี่ยนเป็น '{dict(Order.STATUS_CHOICES).get(new_status)}'")
+    else:
+        messages.error(request, "สถานะที่ระบุไม่ถูกต้อง")
+
+    return redirect('order_management')  # เปลี่ยนเป็น URL ที่เหมาะสม
