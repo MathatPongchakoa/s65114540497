@@ -1,3 +1,4 @@
+{% load custom_filters %}
 <!DOCTYPE html>
 <html lang="en">
 
@@ -5,6 +6,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Bookings</title>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        /* ใช้ฟอนต์ Chakra Petch ทั่วทั้งหน้า */
+        body {
+            font-family: 'Chakra Petch', sans-serif;
+        }
+    </style>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         function showPopup(bookingId) {
@@ -26,28 +34,9 @@
 
 <body class="bg-gray-100 min-h-screen flex flex-col">
     <!-- Navbar -->
-    <nav class="bg-red-500 shadow-lg">
-        <div class="max-w-7xl mx-auto px-4">
-            <div class="flex justify-between h-16 items-center">
-                <a href="#" class="text-2xl font-bold text-white">JustFood</a>
-                <div class="flex space-x-4">
-                    <a href="/" class="text-white hover:text-blue-300">Table</a>
-                    <a href="/menu/" class="text-white hover:text-blue-300">Menu</a>
-                    <a href="/cart/" class="text-white hover:text-blue-300">Cart</a>
-                    <a href="/my-bookings/" class="text-white hover:text-blue-300">My Bookings</a>
-                    {% if user.is_authenticated %}
-                    <span class="text-white">Hello, {{ user.username }}</span>
-                    <form method="POST" action="{% url 'logout' %}" class="inline">
-                        {% csrf_token %}
-                        <button type="submit" class="text-white hover:text-blue-300 ml-2">Logout</button>
-                    </form>
-                    {% else %}
-                    <a href="/login/" class="text-white hover:text-blue-300">Login</a>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </nav>
+    {% include 'user_nav.html' %}
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+      
 
     <!-- Content -->
     <div class="flex-grow flex items-center justify-center">
@@ -69,7 +58,7 @@
                     {% for booking in bookings %}
                     <tr>
                         <td class="border border-gray-300 px-4 py-2 text-center">{{ booking.table.table_name }}</td>
-                        <td class="border border-gray-300 px-4 py-2 text-center">{{ booking.booking_date }}</td>
+                        <td class="border border-gray-300 px-4 py-2 text-center">{{ booking.booking_date|to_thai_date }}</td>
                         <td class="border border-gray-300 px-4 py-2 text-center">{{ booking.booking_time|time:"H:i" }}</td>
                         <td class="border border-gray-300 px-4 py-2 text-center">{{ booking.booking_end_time|time:"H:i" }}</td>
                         <td class="border border-gray-300 px-4 py-2 text-center">

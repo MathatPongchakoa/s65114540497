@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>แก้ไขโต๊ะ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    {% include 'owner/admin_nav.html' %}
+    <div class="max-w-4xl mx-auto mt-10 bg-white p-6 rounded shadow-lg">
+        <h1 class="text-2xl font-bold mb-6 text-center">แก้ไขโต๊ะ {{ table.table_name }}</h1>
+        
+        <form method="POST">
+            {% csrf_token %}
+            
+            <!-- ชื่อโต๊ะ -->
+            <div class="mb-4">
+                <label class="block text-gray-700 font-bold mb-2">ชื่อโต๊ะ:</label>
+                <input type="text" name="table_name" value="{{ table.table_name }}" 
+                       class="w-full border border-gray-300 rounded px-4 py-2">
+            </div>
+
+            <!-- โซน -->
+            <div class="mb-4">
+                <label class="block text-gray-700 font-bold mb-2">โซน:</label>
+                <select name="zone" class="w-full border border-gray-300 rounded px-4 py-2">
+                    {% for zone in zones %}
+                    <option value="{{ zone.id }}" {% if table.zone.id == zone.id %}selected{% endif %}>{{ zone.name }}</option>
+                    {% endfor %}
+                </select>                
+            </div>
+
+            <!-- สถานะโต๊ะ -->
+            <div class="mb-4">
+                <label class="block text-gray-700 font-bold mb-2">สถานะโต๊ะ:</label>
+                <select name="table_status" class="w-full border border-gray-300 rounded px-4 py-2">
+                    <option value="available" {% if table.table_status == "available" %}selected{% endif %}>ว่าง</option>
+                    <option value="occupied" {% if table.table_status == "occupied" %}selected{% endif %}>มีคนนั่ง</option>
+                    <option value="booked" {% if table.table_status == "booked" %}selected{% endif %}>จอง</option>
+                </select>
+            </div>
+
+            <!-- จำนวนที่นั่ง -->
+            <div class="mb-4">
+                <label class="block text-gray-700 font-bold mb-2">จำนวนที่นั่ง:</label>
+                <input type="number" name="seating_capacity" value="{{ table.seating_capacity }}" min="1"
+                       class="w-full border border-gray-300 rounded px-4 py-2">
+            </div>
+
+            <div class="text-center mt-6">
+                <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">บันทึก</button>
+                <a href="{% url 'table_management' %}" class="ml-4 text-red-500 hover:underline">ยกเลิก</a>
+            </div>
+        </form>
+    </div>
+</body>
+</html>

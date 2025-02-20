@@ -38,13 +38,29 @@ urlpatterns = [
     path('edit-zone/<int:zone_id>/', edit_zone_view, name='edit_zone'),  # แก้ไขโซน
     path('delete-zone/<int:zone_id>/', delete_zone_view, name='delete_zone'), 
     path('menu-management/edit/<int:menu_id>/', edit_menu_view, name='edit_menu'),
+    path('menu-management/delete/<int:menu_id>/', delete_menu, name='edit_menu'),
 
     path('menu/<int:menu_id>/delete/', delete_menu, name='delete_menu'),
     path('cart/check-reservation/', check_reservation, name='check_reservation'),
     path('cart/confirm-order/', confirm_orders, name='confirm_order'),
     path('order-summary/', order_summary, name='order_summary'),
     path('order-management/', order_management, name='order_management'),
-     path('order/update-status/<int:order_id>/<str:new_status>/', update_order_status, name='update_order_status'),
+    path('order/update-status/<int:order_id>/<str:new_status>/', update_order_status, name='update_order_status'),
+    path("update-table-position/", update_table_position_view, name="update_table_position"),
+
+    path('add-promotion/', add_promotion, name='add_promotion'),  # ✅ Path สำหรับเพิ่มโปรโมชัน
+    path('get-menus-by-category/', get_menus_by_category, name='get_menus_by_category'),  # ✅ ดึงเมนูตามหมวดหมู่
+    path('promotions/', promotion_list, name='promotion_list'),  # ✅ แสดงหน้าโปรโมชัน
+    path('delete-promotion/<int:promo_id>/', delete_promotion, name='delete_promotion'),  # ✅ ลบโปรโมชัน
+    path('user/promotions/', user_promotion_list, name='user_promotion_list'),
+    path("edit-promotion/<int:promo_id>/", edit_promotion, name="edit_promotion"),
+    path('edit-table/<int:table_id>/', edit_table, name='edit_table'),
+    path('table-management/delete/<int:table_id>/', delete_table, name='delete_table'),
+     path('sales-report/', sales_report_view, name='sales_report'),
+     path("monthly-sales-report/", monthly_sales_report_view, name="monthly_sales_report"),
+     path("yearly-sales-report/", yearly_sales_report_view, name="yearly_sales_report"),
+    
+
     
     
 ]

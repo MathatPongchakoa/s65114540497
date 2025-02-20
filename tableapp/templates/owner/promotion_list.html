@@ -1,0 +1,178 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>รายการโปรโมชัน</title>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: 'Chakra Petch', sans-serif;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100">
+    {% include 'owner/admin_nav.html' %}
+
+    <div class="max-w-5xl mx-auto mt-10 bg-white p-6 rounded shadow-lg">
+        <h1 class="text-3xl font-bold mb-6 text-center">📢 รายการโปรโมชัน</h1>
+
+        <!-- ✅ ปุ่มเพิ่มโปรโมชัน -->
+        <div class="text-right mb-4">
+            <a href="{% url 'add_promotion' %}" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                ➕ เพิ่มโปรโมชัน
+            </a>
+        </div>
+
+        <!-- ✅ ตารางแสดงโปรโมชัน -->
+        <div class="overflow-x-auto">
+            <table class="w-full border-collapse border border-gray-300">
+                <thead>
+                    <tr class="bg-gray-200 text-gray-700">
+                        <th class="border border-gray-300 px-4 py-2">ชื่อโปรโมชัน</th>
+                        <th class="border border-gray-300 px-4 py-2">เมนูที่ลด</th>
+                        <th class="border border-gray-300 px-4 py-2">ส่วนลด</th>
+                        <th class="border border-gray-300 px-4 py-2">เริ่มต้น</th>
+                        <th class="border border-gray-300 px-4 py-2">สิ้นสุด</th>
+                        <th class="border border-gray-300 px-4 py-2">จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for promo in promotions %}
+                    <tr class="text-center">
+                        <td class="border border-gray-300 px-4 py-2 font-bold">{{ promo.name }}</td>
+                        <td class="border border-gray-300 px-4 py-2">
+                            {% for pm in promotion_menus %}
+                                {% if pm.promotion.id == promo.id %}
+                                    <div class="text-gray-800">{{ pm.menu.food_name }} ({{ pm.menu.category.name }})</div>
+                                {% endif %}
+                            {% endfor %}
+                        </td>
+                        <td class="border border-gray-300 px-4 py-2 text-red-600 font-bold">
+                            {% if promo.discount_type == "percentage" %}
+                                -{{ promo.discount_value|floatformat:0 }}%
+                            {% else %}
+                                -฿{{ promo.discount_value }}
+                            {% endif %}
+                        </td>
+                        <td class="border border-gray-300 px-4 py-2">{{ promo.start_time }}</td>
+                        <td class="border border-gray-300 px-4 py-2">{{ promo.end_time }}</td>
+                        <td class="border border-gray-300 px-4 py-2 flex justify-center space-x-2">
+                            <a href="{% url 'edit_promotion' promo.id %}" class="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600">
+                                 แก้ไข
+                            </a>
+                            <button class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600" 
+                                    onclick="confirmDelete('{{ promo.id }}', '{{ promo.name }}')">
+                                 ลบ
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-gray-500 py-4">ยังไม่มีโปรโมชัน</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ✅ Popup แสดงเมื่อกดลบ -->
+    <div id="deletePopup" class="fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center hidden">
+        <div class="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+            <p id="popupMessage" class="text-gray-800 text-lg mb-4"></p>
+            <div class="flex justify-end">
+                <button id="cancelPopupButton" class="bg-gray-300 text-gray-700 px-4 py-2 rounded mr-2">ยกเลิก</button>
+                <button id="confirmPopupButton" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">ยืนยัน</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function confirmDelete(promoId, promoName) {
+            const popup = document.getElementById("deletePopup");
+            const popupMessage = document.getElementById("popupMessage");
+            const confirmButton = document.getElementById("confirmPopupButton");
+            const cancelButton = document.getElementById("cancelPopupButton");
+
+            popupMessage.textContent = `คุณต้องการลบโปรโมชัน "${promoName}" ใช่หรือไม่?`;
+            popup.classList.remove("hidden");
+
+            confirmButton.onclick = function () {
+                deletePromotion(promoId);
+                closePopup();
+            };
+
+            cancelButton.onclick = function () {
+                closePopup();
+            };
+        }
+
+        function deletePromotion(promoId) {
+            fetch(`/delete-promotion/${promoId}/`, {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": getCSRFToken(),
+                    "Content-Type": "application/json"
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showSuccessPopup("ลบโปรโมชันเรียบร้อย!");
+                    setTimeout(() => { location.reload(); }, 1500);
+                } else {
+                    showErrorPopup("เกิดข้อผิดพลาด: " + data.message);
+                }
+            });
+        }
+
+        function closePopup() {
+            document.getElementById("deletePopup").classList.add("hidden");
+        }
+
+        function showSuccessPopup(message) {
+            const popup = document.createElement("div");
+            popup.className = "fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50";
+            popup.innerHTML = `
+                <div class="bg-green-500 text-white p-4 rounded-lg shadow-lg max-w-md text-center">
+                    <p class="text-lg">${message}</p>
+                </div>
+            `;
+            document.body.appendChild(popup);
+            setTimeout(() => popup.remove(), 1500);
+        }
+
+        function showErrorPopup(message) {
+            const popup = document.createElement("div");
+            popup.className = "fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50";
+            popup.innerHTML = `
+                <div class="bg-red-500 text-white p-4 rounded-lg shadow-lg max-w-md text-center">
+                    <p class="text-lg">${message}</p>
+                </div>
+            `;
+            document.body.appendChild(popup);
+            setTimeout(() => popup.remove(), 2000);
+        }
+
+        function getCSRFToken() {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== "") {
+                let cookies = document.cookie.split(";");
+                for (let i = 0; i < cookies.length; i++) {
+                    let cookie = cookies[i].trim();
+                    if (cookie.startsWith("csrftoken=")) {
+                        cookieValue = decodeURIComponent(cookie.substring(10));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+</body>
+</html>

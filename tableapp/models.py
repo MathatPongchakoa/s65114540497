@@ -45,7 +45,20 @@ class Table(models.Model):
         default='available'
     )
     seating_capacity = models.IntegerField(default=4)  # จำนวนคนที่รองรับได้
-    zone = models.ForeignKey(Zone, on_delete=models.SET_NULL, null=True, blank=True)  # เชื่อมกับ Zone
+    zone = models.ForeignKey('Zone', on_delete=models.SET_NULL, null=True, blank=True)  # เชื่อมกับ Zone
+
+    # ✅ เพิ่มฟิลด์ตำแหน่ง x, y สำหรับการลากโต๊ะ
+    x_position = models.IntegerField(default=100)  # ตำแหน่ง x เริ่มต้น
+    y_position = models.IntegerField(default=100)  # ตำแหน่ง y เริ่มต้น
+
+    def save(self, *args, **kwargs):
+        """ ถ้าเพิ่มโต๊ะใหม่และไม่มีค่า x, y ให้กำหนดอัตโนมัติ """
+        if self.x_position == 100 and self.y_position == 100:
+            last_table = Table.objects.order_by('-id').first()
+            if last_table:
+                self.x_position = last_table.x_position + 200
+                self.y_position = last_table.y_position
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.table_name} ({self.seating_capacity} คน, {self.zone.name if self.zone else 'ไม่ระบุโซน'})"
@@ -129,11 +142,13 @@ class Order(models.Model):
     STATUS_CHOICES = [
         ('pending', 'รอยืนยัน'),
         ('in_progress', 'กำลังเตรียม'),
-        ('served', 'เสิร์ฟแล้ว'),  # เพิ่มสถานะนี้
+        ('served', 'เสิร์ฟแล้ว'),
         ('completed', 'สำเร็จ'),
         ('cancelled', 'ยกเลิก'),
     ]
+    
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    booking = models.ForeignKey(Booking, on_delete=models.SET_NULL, null=True, blank=True)  # ✅ เชื่อมกับ Booking โดยตรง
     table_name = models.CharField(max_length=100)
     booking_start = models.DateTimeField()
     booking_end = models.DateTimeField()
@@ -150,12 +165,38 @@ class Order(models.Model):
 
 
 
+
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, related_name='items', on_delete=models.CASCADE)
-    menu = models.CharField(max_length=255)  # ชื่อเมนู
+    menu = models.ForeignKey(Menu, on_delete=models.CASCADE)  # เปลี่ยนเป็น ForeignKey
     price = models.DecimalField(max_digits=6, decimal_places=2)
     quantity = models.PositiveIntegerField()
 
     def __str__(self):
-        return f"{self.menu} (x{self.quantity})"
+        return f"{self.menu.food_name} (x{self.quantity})"  # ดึงชื่อเมนูจาก ForeignKey
+    
+
+class Promotion(models.Model):
+    PROMO_TYPE_CHOICES = [
+        ('percent', 'ลดเป็น %'),
+        ('fixed_price', 'กำหนดราคาตายตัว'),
+    ]
+
+    name = models.CharField(max_length=100, unique=True, verbose_name="ชื่อโปรโมชัน")
+    discount_type = models.CharField(max_length=20, choices=PROMO_TYPE_CHOICES, verbose_name="ประเภทส่วนลด")
+    discount_value = models.DecimalField(max_digits=6, decimal_places=2, verbose_name="มูลค่าส่วนลด")  # เช่น 10% หรือ 50 บาท
+    start_time = models.DateTimeField(verbose_name="เริ่มโปรโมชัน")
+    end_time = models.DateTimeField(verbose_name="สิ้นสุดโปรโมชัน")
+    is_active = models.BooleanField(default=True, verbose_name="โปรโมชันยังใช้งานอยู่")
+
+    def __str__(self):
+        return f"{self.name} ({self.get_discount_type_display()} {self.discount_value})"
+
+class PromotionMenu(models.Model):
+    promotion = models.ForeignKey(Promotion, on_delete=models.CASCADE, related_name="promotion_menus")
+    menu = models.ForeignKey('Menu', on_delete=models.CASCADE, related_name="menu_promotions")
+
+    def __str__(self):
+        return f"{self.promotion.name} - {self.menu.food_name}"
+
 

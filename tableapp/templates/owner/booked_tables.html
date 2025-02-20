@@ -1,3 +1,4 @@
+{% load custom_filters %}
 <!DOCTYPE html>
 <html lang="en">
 
@@ -5,6 +6,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Booked Tables</title>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Chakra Petch', sans-serif;
+        }
+    </style>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         function showBookingDetails(tableId, index) {
@@ -17,28 +24,12 @@
 </head>
 
 <body class="bg-gray-100">
-    <!-- Header -->
-    <header class="bg-red-500 text-white shadow-lg">
-        <div class="max-w-7xl mx-auto px-4 flex justify-between items-center h-16">
-            <div class="text-2xl font-bold">LOGO</div>
-            <nav class="flex space-x-4">
-                <a href="/table-management/" class="hover:text-gray-300">HOME</a>
-                <a href="/menu-management/" class="hover:text-gray-300">MENU</a>
-                <a href="#" class="hover:text-gray-300">PROMOTION</a>
-                <a href="/owner/booked-tables/" class="hover:text-gray-300">BOOKED TABLES</a>
-                <a href="/zone-management/" class="hover:text-gray-300">ZONE MANAGE</a> <!-- เพิ่มลิงก์นี้ -->
-                <a href="/order-management/" class="hover:text-gray-300">ORDER MANAGEMENT</a>
-            </nav>
-            
-        </div>
-    </header>
+    {% include 'owner/admin_nav.html' %}
 
-    <!-- Main Content -->
-    <h1 class="text-center text-3xl font-bold mt-6 mb-8">รายการโต๊ะที่ถูกจอง</h1>
+    <h1 class="text-center text-3xl font-bold mt-6 mb-8">📋 รายการโต๊ะที่ถูกจอง</h1>
     <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {% for table in table_data %}
         <div class="border rounded-lg shadow bg-white p-4 relative">
-            <!-- ชื่อโต๊ะและจำนวนการจองในบรรทัดเดียวกัน -->
             <div class="flex justify-between items-center">
                 <h2 class="text-xl font-bold text-gray-700">{{ table.table_name }}</h2>
                 <div class="bg-blue-500 text-white text-sm font-bold px-2 py-1 rounded-full">
@@ -47,36 +38,58 @@
             </div>
             <p class="text-sm text-gray-600">ความจุ: {{ table.seating_capacity }} ที่นั่ง</p>
             <hr class="my-2">
+
             <div id="bookings-{{ table.table_name }}">
                 {% for booking in table.bookings %}
                 <div class="booking {% if not forloop.first %}hidden{% endif %}">
-                    <h3 class="font-bold text-gray-600">รายการจอง:</h3>
+                    <h3 class="font-bold text-gray-600">📌 รายการจอง:</h3>
                     <p class="text-sm text-gray-500">
                         ผู้จอง: {{ booking.user.username }} <br>
                         วันที่: {{ booking.booking_date|date:"d/m/Y" }} <br>
                         เวลา: {{ booking.booking_time|date:"H:i" }} - {{ booking.booking_end_time|date:"H:i" }} <br>
-                        สถานะ: 
-                        {% if booking.status == "pending" %}
-                        <span class="text-yellow-500 font-bold">รอยืนยัน</span>
-                        <form method="POST" action="{% url 'change_booking_status' booking.id %}" class="inline-block">
-                            {% csrf_token %}
-                            <button type="submit" class="bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600">
-                                ยืนยัน
-                            </button>
-                        </form>
-                        {% elif booking.status == "occupied" %}
-                        <span class="text-green-500 font-bold">มีคนนั่ง</span>
-                        {% elif booking.status == "cancelled" %}
-                        <span class="text-red-500 font-bold">ยกเลิก</span>
-                        {% endif %}
+                        สถานะ: <span class="status-text">
+                            {% if booking.status == "pending" %}
+                                <span class="text-yellow-500 font-bold">รอยืนยัน</span>
+                            {% elif booking.status == "occupied" %}
+                                <span class="text-green-500 font-bold">มีคนนั่ง</span>
+                            {% elif booking.status == "completed" %}
+                                <span class="text-blue-500 font-bold">เสร็จสิ้น</span>
+                            {% elif booking.status == "cancelled" %}
+                                <span class="text-red-500 font-bold">ยกเลิก</span>
+                            {% endif %}
+                        </span>
                     </p>
+
+                    <!-- ✅ ปุ่มอัปเดตสถานะ (ใช้ Form) -->
+                    {% if booking.status == "pending" %}
+                    <form method="POST" action="{% url 'change_booking_status' booking.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="status" value="occupied">
+                        <button type="submit" class="bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600 mt-2">
+                            ✅ ยืนยัน
+                        </button>
+                    </form>
+                    {% endif %}
+
+                    {% if booking.status == "occupied" %}
+                    <form method="POST" action="{% url 'change_booking_status' booking.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="status" value="completed">
+                        <button type="submit" class="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 mt-2">
+                            ✔️ เสร็จสิ้น
+                        </button>
+                    </form>
+                    {% endif %}
                 </div>
                 {% endfor %}
             </div>
+
             {% if table.bookings|length > 1 %}
             <div class="flex justify-between mt-4">
-                <button onclick="showBookingDetails('{{ table.table_name }}', 0)" class="bg-gray-300 px-2 py-1 rounded hover:bg-gray-400">ก่อนหน้า</button>
-                <button onclick="showBookingDetails('{{ table.table_name }}', 1)" class="bg-gray-300 px-2 py-1 rounded hover:bg-gray-400">ถัดไป</button>
+                <button onclick="showBookingDetails('{{ table.table_name }}', 0)" 
+                    class="bg-gray-300 px-2 py-1 rounded hover:bg-gray-400">ก่อนหน้า</button>
+                <button onclick="showBookingDetails('{{ table.table_name }}', 1)" 
+                    class="bg-gray-300 px-2 py-1 rounded hover:bg-gray-400">ถัดไป</button>
             </div>
             {% endif %}
         </div>

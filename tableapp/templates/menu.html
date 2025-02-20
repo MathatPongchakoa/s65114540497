@@ -5,6 +5,33 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Menu</title>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        /* ใช้ฟอนต์ Chakra Petch ทั่วทั้งหน้า */
+        html, body {
+            font-family: 'Chakra Petch', sans-serif !important;
+        }
+    
+        /* เพิ่มแอนิเมชั่นให้การ์ดเมนู */
+        .menu-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+    
+        .menu-card:hover {
+            transform: scale(1.05) translateY(-5px);
+            box-shadow: 0px 10px 20px rgba(0, 0, 0, 0.2);
+        }
+    
+        /* เอฟเฟกต์เลื่อนของรูปภาพ */
+        .menu-card img {
+            transition: transform 0.3s ease;
+        }
+    
+        .menu-card:hover img {
+            transform: scale(1.1);
+        }
+    </style>
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         function addToCart(foodId) {
@@ -54,37 +81,9 @@
 
 <body class="bg-gray-100">
     <!-- Navigation Bar -->
-    <nav class="bg-red-500 shadow-lg">
-        <div class="max-w-7xl mx-auto px-4">
-            <div class="flex justify-between h-16">
-                <div class="flex items-center">
-                    <a href="#" class="text-2xl font-bold text-white">JustFood</a>
-                </div>
-                <div class="flex space-x-4 items-center">
-                    <a href="/" class="text-white hover:text-blue-300">Table</a>
-                    <a href="/menu/" class="text-white hover:text-blue-300">Menu</a>
-                    <a href="/cart/" class="text-white hover:text-blue-300 flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
-                            stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M3 3h2l.4 2m1.6 10h9.2m4.8-8H6.4M5.4 5L7.6 16h9.8l1.2-6m-5.2 6v2a2 2 0 01-2 2H9a2 2 0 01-2-2v-2">
-                            </path>
-                        </svg>
-                    </a>
-                    <a href="/my-bookings/" class="text-white hover:text-blue-300">My Bookings</a>
-                    {% if user.is_authenticated %}
-                    <span class="text-white">Hello, {{ user.username }}</span>
-                    <form method="POST" action="{% url 'logout' %}" class="inline">
-                        {% csrf_token %}
-                        <button type="submit" class="text-white hover:text-blue-300 ml-2">Logout</button>
-                    </form>
-                    {% else %}
-                    <a href="/login/" class="text-white hover:text-blue-300">Login</a>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </nav>
+    {% include 'user_nav.html' %}
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+       
 
     <h1 class="text-center text-3xl font-bold mb-6 mt-6">เมนูอาหาร</h1>
 
@@ -112,26 +111,54 @@
 
     <!-- Menu items -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
-        {% for menu in menus %}
-        <div class="border p-4 rounded-lg shadow bg-white">
-            <img src="{{ menu.image.url }}" alt="{{ menu.food_name }}" class="w-full h-32 object-cover rounded">
+        {% for item in menus %}
+        <div class="menu-card border p-4 rounded-lg shadow bg-white group">
+            <div class="overflow-hidden rounded">
+                <img src="{{ item.menu.image.url }}" alt="{{ item.menu.food_name }}" 
+                     class="w-full h-32 object-cover rounded transition-transform duration-300 group-hover:scale-110">
+            </div>
             <div class="flex justify-between items-center mt-4">
                 <div>
-                    <h2 class="text-lg font-bold">{{ menu.food_name }}</h2>
-                    <p class="text-sm text-gray-500">{{ menu.price }} บาท</p>
-                    <p class="text-sm text-gray-400">ประเภท: {{ menu.category.name }}</p>
+                    <h2 class="text-lg font-bold">{{ item.menu.food_name }}</h2>
+                    
+                    {% if item.promotion %}
+                        <p class="text-sm text-gray-400 line-through">{{ item.menu.price|floatformat:2 }} บาท</p>
+    
+                        <p class="text-sm text-red-600 font-bold">
+                            {{ item.discounted_price|floatformat:2 }} บาท
+                        </p>
+    
+                        <p class="text-xs text-green-500">
+                            {% if item.promotion.discount_type == "percentage" %}
+                                ลด {{ item.promotion.discount_value }}%
+                            {% else %}
+                                ลด ฿{{ item.promotion.discount_value }}
+                            {% endif %}
+                        </p>
+                    {% else %}
+                        <p class="text-sm text-gray-500">{{ item.menu.price|floatformat:2 }} บาท</p>
+                    {% endif %}
+    
+                    <p class="text-sm text-gray-400">ประเภท: {{ item.menu.category.name }}</p>
                 </div>
+    
                 {% if active_booking %}
-                <button onclick="addToCart({{ menu.id }})"
-                    class="bg-green-500 text-white rounded-full w-8 h-8 flex justify-center items-center">+</button>
+                <button onclick="addToCart({{ item.menu.id }})"
+                    class="bg-green-500 text-white rounded-full w-8 h-8 flex justify-center items-center transform transition-transform duration-300 hover:scale-110">
+                    +
+                </button>
                 {% else %}
                 <button disabled
-                    class="bg-gray-400 text-white rounded-full w-8 h-8 flex justify-center items-center cursor-not-allowed">+</button>
+                    class="bg-gray-400 text-white rounded-full w-8 h-8 flex justify-center items-center cursor-not-allowed">
+                    +
+                </button>
                 {% endif %}
             </div>
         </div>
         {% endfor %}
     </div>
+    
+    
 
     <!-- Pagination -->
     <div class="mt-6 flex justify-center space-x-4">

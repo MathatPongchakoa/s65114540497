@@ -1,0 +1,168 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เพิ่มโปรโมชัน</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script> <!-- ✅ ใช้ jQuery -->
+    <style>
+        body {
+            font-family: 'Chakra Petch', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    {% include 'owner/admin_nav.html' %}
+    <div class="max-w-4xl mx-auto mt-10 bg-white p-6 rounded shadow-lg">
+        <h1 class="text-2xl font-bold mb-6 text-center">เพิ่มโปรโมชัน</h1>
+
+        <form id="promotionForm" method="POST">
+            {% csrf_token %}
+            <div class="mb-4">
+                <label for="promo_name" class="block text-gray-700 font-bold mb-2">ชื่อโปรโมชัน:</label>
+                <input type="text" name="promo_name" id="promo_name" class="w-full border border-gray-300 rounded px-4 py-2">
+            </div>
+
+            <div class="mb-4">
+                <label for="discount_type" class="block text-gray-700 font-bold mb-2">ประเภทส่วนลด:</label>
+                <select name="discount_type" id="discount_type" class="w-full border border-gray-300 rounded px-4 py-2">
+                    <option value="percentage">ลดเป็นเปอร์เซ็นต์ (%)</option>
+                    <option value="fixed">ลดเป็นจำนวนเงิน</option>
+                </select>
+            </div>
+
+            <div class="mb-4">
+                <label for="discount_value" class="block text-gray-700 font-bold mb-2">มูลค่าส่วนลด:</label>
+                <input type="number" name="discount_value" id="discount_value" class="w-full border border-gray-300 rounded px-4 py-2">
+            </div>
+
+            <div class="mb-4">
+                <label for="start_time" class="block text-gray-700 font-bold mb-2">วันเริ่มต้น:</label>
+                <input type="datetime-local" name="start_time" id="start_time" class="w-full border border-gray-300 rounded px-4 py-2">
+            </div>
+
+            <div class="mb-4">
+                <label for="end_time" class="block text-gray-700 font-bold mb-2">วันสิ้นสุด:</label>
+                <input type="datetime-local" name="end_time" id="end_time" class="w-full border border-gray-300 rounded px-4 py-2">
+            </div>
+
+            <!-- ✅ เลือกหมวดหมู่ก่อน -->
+            <div class="mb-4">
+                <label for="category" class="block text-gray-700 font-bold mb-2">เลือกหมวดหมู่:</label>
+                <select name="category" id="category" class="w-full border border-gray-300 rounded px-4 py-2">
+                    <option value="">-- เลือกหมวดหมู่ --</option>
+                    {% for category in categories %}
+                    <option value="{{ category.id }}">{{ category.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- ✅ แสดงรายการเมนูตามหมวดหมู่ พร้อมปุ่ม "เลือกทั้งหมด" -->
+            <div class="mb-4">
+                <label class="block text-gray-700 font-bold mb-2">เลือกเมนูที่ลดราคา:</label>
+                <div id="menu-list" class="border border-gray-300 rounded px-4 py-2 max-h-48 overflow-y-auto">
+                    <p class="text-gray-500">กรุณาเลือกหมวดหมู่ก่อน</p>
+                </div>
+            </div>
+
+            <div class="text-center mt-6">
+                <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">บันทึกโปรโมชัน</button>
+                <a href="{% url 'promotion_list' %}" class="ml-4 text-blue-500 hover:underline">ย้อนกลับ</a>
+            </div>
+        </form>
+    </div>
+    <!-- ✅ Popup แจ้งเตือนเมื่อมีเมนูที่มีโปรโมชันอยู่แล้ว -->
+        <div id="error-popup" class="popup fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 hidden">
+            <div class="bg-white p-6 rounded-lg shadow-lg text-center">
+                <h2 class="text-lg font-bold text-red-600">เกิดข้อผิดพลาด</h2>
+                <p id="error-popup-message" class="text-gray-700 mt-2"></p>
+                <button class="close-popup mt-4 px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">ปิด</button>
+            </div>
+        </div>
+
+        <!-- ✅ Popup แจ้งเตือนเมื่อเพิ่มโปรโมชันสำเร็จ -->
+        <div id="success-popup" class="popup fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 hidden">
+            <div class="bg-white p-6 rounded-lg shadow-lg text-center">
+                <h2 class="text-lg font-bold text-green-600">เพิ่มโปรโมชั่นสำเร็จ!</h2>
+                <p id="success-popup-message" class="text-gray-700 mt-2"></p>
+            </div>
+        </div>
+
+
+        <script>
+            $(document).ready(function() {
+                $("#category").change(function() {
+                    let categoryId = $(this).val();
+                    if (categoryId) {
+                        $.ajax({
+                            url: "{% url 'get_menus_by_category' %}",
+                            type: "GET",
+                            data: { category_id: categoryId },
+                            success: function(data) {
+                                let menuList = $("#menu-list");
+                                menuList.empty();
+                                if (data.menus.length > 0) {
+                                    menuList.append(`
+                                        <div class="mb-2">
+                                            <input type="checkbox" id="select-all" class="mr-2">
+                                            <label for="select-all" class="font-bold">เลือกทั้งหมด</label>
+                                        </div>
+                                    `);
+                                    
+                                    data.menus.forEach(menu => {
+                                        menuList.append(`
+                                            <div>
+                                                <input type="checkbox" name="selected_menus" class="menu-checkbox" value="${menu.id}">
+                                                <label>${menu.food_name}</label>
+                                            </div>
+                                        `);
+                                    });
+        
+                                    $("#select-all").change(function() {
+                                        $(".menu-checkbox").prop("checked", $(this).prop("checked"));
+                                    });
+        
+                                    $(".menu-checkbox").change(function() {
+                                        if ($(".menu-checkbox:checked").length === $(".menu-checkbox").length) {
+                                            $("#select-all").prop("checked", true);
+                                        } else {
+                                            $("#select-all").prop("checked", false);
+                                        }
+                                    });
+        
+                                } else {
+                                    menuList.html('<p class="text-gray-500">ไม่มีเมนูในหมวดหมู่นี้</p>');
+                                }
+                            }
+                        });
+                    } else {
+                        $("#menu-list").html('<p class="text-gray-500">กรุณาเลือกหมวดหมู่ก่อน</p>');
+                    }
+                });
+            });
+        </script>
+        
+        {% if messages %}
+        <div id="popup-container" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50">
+            <div class="bg-white p-6 rounded-lg shadow-lg text-center">
+                {% for message in messages %}
+                <h2 class="text-lg font-bold {% if message.tags == 'success' %}text-green-600{% else %}text-red-600{% endif %}">
+                    {{ message }}
+                </h2>
+                {% endfor %}
+                <button onclick="closePopup()" class="mt-4 px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">ปิด</button>
+            </div>
+        </div>
+        
+        <script>
+            function closePopup() {
+                document.getElementById("popup-container").style.display = "none";
+            }
+            // ✅ ปิด Popup อัตโนมัติใน 3 วินาที
+            setTimeout(closePopup, 3000);
+        </script>
+        {% endif %}
+</body>
+</html>

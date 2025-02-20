@@ -5,10 +5,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Order Summary</title>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        /* ใช้ฟอนต์ Chakra Petch ทั่วทั้งหน้า */
+        body {
+            font-family: 'Chakra Petch', sans-serif;
+        }
+    </style>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
 <body class="bg-gray-100">
+    {% include 'user_nav.html' %}
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
     <div class="max-w-4xl mx-auto mt-10 bg-white p-6 rounded shadow-lg">
         <h1 class="text-2xl font-bold mb-6">ประวัติคำสั่งซื้อ</h1>
 
@@ -36,10 +46,10 @@
                     <td class="border border-gray-300 px-4 py-2 text-right">{{ order.total_price|floatformat:2 }} บาท</td>
                     <td class="border border-gray-300 px-4 py-2 text-center">
                         <span class="px-2 py-1 rounded
-                            {% if order.status == 'pending' %}bg-yellow-200 text-yellow-700{% endif %}
-                            {% if order.status == 'in_progress' %}bg-blue-200 text-blue-700{% endif %}
-                            {% if order.status == 'completed' %}bg-green-200 text-green-700{% endif %}
-                            {% if order.status == 'cancelled' %}bg-red-200 text-red-700{% endif %}">
+                            {% if order.status == 'pending' %}bg-yellow-200 text-yellow-700 rounded-full{% endif %}
+                            {% if order.status == 'in_progress' %}bg-blue-200 text-blue-700 rounded-full{% endif %}
+                            {% if order.status == 'completed' %}bg-green-200 text-green-700 rounded-full{% endif %}
+                            {% if order.status == 'cancelled' %}bg-red-200 text-red-700 rounded-full{% endif %}">
                             {{ order.get_status_display }}
                         </span>
                     </td>

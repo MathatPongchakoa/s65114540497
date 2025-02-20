@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'django_browser_reload',
     'django_celery_beat',
     'django_dbml',
+    'django.contrib.humanize',
 ]
 
 MIDDLEWARE = [
@@ -119,10 +120,9 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
+LANGUAGE_CODE = "TH-th"
 
 TIME_ZONE = 'Asia/Bangkok'
-
-TIME_ZONE = "UTC"
 
 USE_I18N = True
 
@@ -132,7 +132,9 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
-STATIC_URL = "static/"
+STATIC_URL = '/static/'
+STATICFILES_DIRS = [BASE_DIR / "static"]
+
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 

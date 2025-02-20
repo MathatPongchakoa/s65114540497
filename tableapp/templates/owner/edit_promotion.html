@@ -1,0 +1,160 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>แก้ไขโปรโมชัน</title>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: 'Chakra Petch', sans-serif;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            transition: border 0.3s ease;
+        }
+        input:focus, select:focus {
+            border-color: #007BFF;
+            outline: none;
+        }
+        button {
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100">
+    {% include 'owner/admin_nav.html' %}
+
+    <div class="max-w-lg mx-auto mt-10 bg-white p-8 rounded-lg shadow-lg">
+        <h1 class="text-3xl font-bold mb-6 text-center text-blue-700">🛠️ แก้ไขโปรโมชัน</h1>
+
+        <!-- ✅ ฟอร์มแก้ไข -->
+        <div class="form-group">
+            <label class="block font-bold"> ชื่อโปรโมชัน</label>
+            <input type="text" id="promoName" value="{{ promo.name }}">
+        </div>
+
+        <div class="form-group">
+            <label class="block font-bold"> ประเภทส่วนลด</label>
+            <select id="discountType">
+                <option value="percentage" {% if promo.discount_type == "percentage" %}selected{% endif %}>เปอร์เซ็นต์ (%)</option>
+                <option value="fixed" {% if promo.discount_type == "fixed" %}selected{% endif %}>จำนวนเงิน (฿)</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label class="block font-bold"> มูลค่าส่วนลด</label>
+            <input type="number" id="discountValue" value="{{ promo.discount_value }}">
+        </div>
+
+        <div class="form-group">
+            <label class="block font-bold"> วันที่เริ่มต้น</label>
+            <input type="datetime-local" id="startTime" value="{{ promo.start_time|date:'Y-m-d\TH:i' }}">
+        </div>
+
+        <div class="form-group">
+            <label class="block font-bold"> วันที่สิ้นสุด</label>
+            <input type="datetime-local" id="endTime" value="{{ promo.end_time|date:'Y-m-d\TH:i' }}">
+        </div>
+
+        <!-- ✅ ปุ่มบันทึก -->
+        <div class="text-center mt-6">
+            <button onclick="savePromotion({{ promo.id }})" class="bg-blue-500 text-white px-5 py-2 rounded-lg hover:bg-blue-600">
+                ✅ บันทึก
+            </button>
+            <a href="{% url 'promotion_list' %}" class="bg-gray-400 text-white px-5 py-2 rounded-lg hover:bg-gray-500 ml-3">
+                🔙 กลับ
+            </a>
+        </div>
+    </div>
+
+    <!-- ✅ Popup แสดงผล -->
+    <div id="popup" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 hidden">
+        <div class="bg-white p-6 rounded-lg shadow-lg max-w-md w-full text-center">
+            <p id="popupMessage" class="text-gray-800 text-lg mb-4"></p>
+            <button onclick="closePopup()" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
+                ตกลง
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function savePromotion(promoId) {
+            let promoName = document.getElementById("promoName").value;
+            let discountType = document.getElementById("discountType").value;
+            let discountValue = document.getElementById("discountValue").value;
+            let startTime = document.getElementById("startTime").value;
+            let endTime = document.getElementById("endTime").value;
+
+            fetch(`/edit-promotion/${promoId}/`, {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": getCSRFToken(),
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    name: promoName,
+                    discount_type: discountType,
+                    discount_value: discountValue,
+                    start_time: startTime,
+                    end_time: endTime
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showPopup(" อัปเดตโปรโมชันเรียบร้อย!", true);
+                } else {
+                    showPopup("❌ เกิดข้อผิดพลาด: " + data.message, false);
+                }
+            });
+        }
+
+        function showPopup(message, isSuccess = true) {
+            const popup = document.getElementById("popup");
+            const popupMessage = document.getElementById("popupMessage");
+
+            popupMessage.innerHTML = message;
+            popup.classList.remove("hidden");
+
+            if (isSuccess) {
+                setTimeout(() => {
+                    closePopup();
+                    window.location.href = "{% url 'promotion_list' %}";
+                }, 1500);
+            }
+        }
+
+        function closePopup() {
+            document.getElementById("popup").classList.add("hidden");
+        }
+
+        function getCSRFToken() {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== "") {
+                let cookies = document.cookie.split(";");
+                for (let i = 0; i < cookies.length; i++) {
+                    let cookie = cookies[i].trim();
+                    if (cookie.startsWith("csrftoken=")) {
+                        cookieValue = decodeURIComponent(cookie.substring(10));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+</body>
+</html>

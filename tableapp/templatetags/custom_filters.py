@@ -13,4 +13,9 @@ def translate_table_status(value):
     }
     return status_mapping.get(value, value)  # คืนค่าเดิมหากไม่พบในแมป
 
-
+@register.filter
+def to_thai_date(value):
+    """Convert a date from AD to BE (พุทธศักราช)."""
+    if value:
+        return value.strftime('%d/%m/') + str(value.year + 543)
+    return ''
