@@ -7,6 +7,7 @@
     <title>Table Status</title>
     <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     
     <!-- ✅ Popup แจ้งเตือนเมื่อผู้ใช้มีการจองโต๊ะอยู่แล้ว -->
     <div id="booking-warning" class="hidden fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50">
@@ -16,14 +17,7 @@
             <button onclick="closeBookingPopup()" class="mt-4 px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">ปิด</button>
         </div>
     </div>
-    <!-- Popup แจ้งเตือนวันที่และเวลา -->
-    <div id="date-time-warning" class="hidden fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50">
-        <div class="bg-white p-6 rounded-lg shadow-lg text-center">
-            <h2 class="text-lg font-bold text-red-600">⚠️ กรุณาเลือกวันที่และเวลา!</h2>
-            <p class="text-gray-700 mt-2">ก่อนทำการจองโต๊ะ กรุณาเลือกวันที่และเวลา</p>
-            <button onclick="closeDateTimePopup()" class="mt-4 px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">ปิด</button>
-        </div>
-    </div>
+    
     <div id="table-booked-warning" class="hidden fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50">
         <div class="bg-white p-6 rounded-lg shadow-lg text-center">
             <h2 class="text-lg font-bold text-red-600">⚠️ โต๊ะนี้ถูกจองแล้ว!</h2>
@@ -34,6 +28,35 @@
 
     
     <script>
+        function submitTableBooking(tableId, tableName, selectedDate, selectedTime, hasActiveBooking, tableStatus) {
+            event.preventDefault(); // ป้องกันไม่ให้ลิงก์หรือปุ่มอื่นๆ ทำงานผิดปกติ
+
+            console.log(`📌 กดที่โต๊ะ ${tableName} (ID: ${tableId}) - สถานะ: ${tableStatus}`);
+
+            // ถ้าผู้ใช้มีการจองโต๊ะอยู่แล้ว ให้เปิด Popup แจ้งเตือน
+            if (hasActiveBooking) {
+                console.warn("⛔ มีการจองอยู่แล้ว!");
+                openBookingPopup();
+                return;
+            }
+
+            // ถ้าโต๊ะมีสถานะ "booked" หรือ "occupied" ให้เปิด popup แจ้งเตือน
+            if (tableStatus === "booked" || tableStatus === "occupied") {
+                console.warn("⚠️ โต๊ะนี้ถูกจองแล้วหรือมีคนนั่ง!");
+                openTableBookedPopup();
+                return;
+            }
+
+            // หา Form จองของโต๊ะที่กด
+            let form = document.getElementById(`booking-form-${tableId}`);
+            if (!form) {
+                console.error("❌ ไม่พบฟอร์มสำหรับโต๊ะนี้");
+                return;
+            }
+
+            console.log("✅ ส่งฟอร์มการจอง...");
+            form.submit(); // ส่งฟอร์มจองโต๊ะ
+        }
         function openTableBookedPopup() {
             document.getElementById("table-booked-warning").classList.remove("hidden");
         }
@@ -41,15 +64,8 @@
         function closeTableBookedPopup() {
             document.getElementById("table-booked-warning").classList.add("hidden");
         }
-        
-        function openDateTimePopup() {
-            document.getElementById("date-time-warning").classList.remove("hidden");
-        }
 
-        // ฟังก์ชันปิดป๊อปอัพวันที่และเวลา
-        function closeDateTimePopup() {
-            document.getElementById("date-time-warning").classList.add("hidden");
-        }
+    
         // ✅ ฟังก์ชันแจ้งเตือนเมื่อผู้ใช้มีการจองโต๊ะอยู่แล้ว
         // ฟังก์ชันเปิด popup
         function openBookingPopup() {
@@ -63,31 +79,7 @@
 
     
         // ใช้ window.onload เพื่อให้ popup แสดงเมื่อหน้าโหลดเสร็จ
-        function handleTableClick(event, isBooked, hasActiveBooking) {
-            event.preventDefault();
-
-            // เช็คว่าผู้ใช้เลือกวันที่และเวลาแล้วหรือยัง
-            const selectedDate = document.getElementById("selectedDate").value;
-            const selectedTime = document.getElementById("selectedTime").value;
-
-            if (!selectedDate || !selectedTime) {
-                openDateTimePopup(); // แจ้งให้เลือกวันที่และเวลา
-                return;
-            }
-
-            // ถ้าผู้ใช้มีการจองโต๊ะอยู่แล้ว
-            if (hasActiveBooking) {
-                openBookingPopup();
-                return;
-            }
-
-            // ถ้าโต๊ะถูกจองหรือมีคนใช้งาน
-            if (isBooked) {
-                openTableBookedPopup();
-            } else {
-                event.target.closest("form").submit(); // ส่งฟอร์มเมื่อโต๊ะไม่ถูกจอง
-            }
-        }
+        
             
         // ✅ ฟังก์ชันกรองโซน
         function filterZone() {
@@ -101,31 +93,19 @@
             window.location.href = url.toString();
         }
     
-        // ✅ ฟังก์ชันเปิดป๊อปอัพโซน
-        function openZonePopup(imageUrl, zoneName, description) {
-            const popup = document.getElementById("zonePopup");
-            const popupImage = document.getElementById("popupImage");
-            const popupTitle = document.getElementById("popupTitle");
-            const popupDescription = document.getElementById("popupDescription");
-    
-            popupImage.src = imageUrl;
-            popupTitle.textContent = zoneName;
-            popupDescription.textContent = description;
-    
-            popup.classList.remove("hidden");
-        }
-    
-        // ✅ ฟังก์ชันปิดป๊อปอัพโซน
-        function closeZonePopup() {
-            document.getElementById("zonePopup").classList.add("hidden");
-        }
-    
-        // ✅ ฟังก์ชันตรวจสอบการจอง
-        function checkBookingStatus(isBooked) {
-            if (isBooked) {
-                openBookingPopup();  // แสดงป๊อปอัพถ้าผู้ใช้จองโต๊ะแล้ว
+      
+        
+        document.addEventListener("DOMContentLoaded", function () {
+        let today = new Date().toISOString().split("T")[0];  // ดึงวันที่ปัจจุบันในรูปแบบ YYYY-MM-DD
+        let dateInput = document.getElementById("selectedDate");
+
+        if (dateInput) {
+            dateInput.setAttribute("min", today);  // ป้องกันการเลือกวันย้อนหลัง
+            if (!dateInput.value) {
+                dateInput.value = today;  // ตั้งค่าวันที่ปัจจุบันเป็นค่าเริ่มต้น
             }
         }
+    });
     </script>
     
 
@@ -134,6 +114,16 @@
         body {
             font-family: 'Chakra Petch', sans-serif;
         }
+        .table-area {
+            width: 100%;
+            height: 100vh; /* ปรับให้พอดีกับความสูงของหน้าจอ */
+            background-image: url('/static/images/backk.png');
+            background-size: contain; /* ปรับให้รูปพื้นหลังไม่เกินขอบ */
+            background-position: center;
+            background-repeat: no-repeat; /* ไม่ให้รูปซ้ำ */
+            overflow: hidden; /* ป้องกันการเลื่อน */
+        }
+
     </style>
 </head>
 
@@ -147,29 +137,35 @@
     <div class="max-w-7xl mx-auto mt-6 flex flex-col items-center space-y-4">
         <h2 class="text-xl font-bold text-center">เลือกวันที่และเวลาเพื่อดูโต๊ะที่ว่าง</h2>
         <form method="GET" action="{% url 'table_status' %}" class="flex space-x-4">
-            <input type="date" name="date" id="selectedDate" value="{{ selected_date|default:'' }}" class="border border-gray-300 p-2 rounded">
-            <input type="time" name="time" id="selectedTime" value="{{ selected_time|default:'' }}" class="border border-gray-300 p-2 rounded">
+            <input type="date" name="date" id="selectedDate" value="{{ selected_date|default:'' }}" 
+                   class="border border-gray-300 p-2 rounded" required>
+        
+            <input type="time" name="time" id="selectedTime" value="{{ selected_time|default:'' }}" 
+                   class="border border-gray-300 p-2 rounded">
+        
             <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
                 ค้นหาโต๊ะว่าง
             </button>
         </form>
+        
+        
     </div>
 
     <!-- Filters -->
     <div class="max-w-7xl mx-auto mt-6 flex items-center justify-between w-full">
         <!-- ✅ สีพื้นหลังของโต๊ะ (Legend) -->
-        <div class="flex space-x-4">
+        <div class="flex space-x-4 mb-4">
             <div class="flex items-center">
-                <div class="w-4 h-4 bg-yellow-100 border border-gray-300"></div>
-                <span class="ml-2 text-sm text-gray-700">นอกร้าน 🍃</span>
+                <div class="w-4 h-4 bg-[#259b24] border border-gray-300"></div>
+                <span class="ml-2 text-sm text-gray-700">ว่าง</span>
             </div>
             <div class="flex items-center">
-                <div class="w-4 h-4 bg-orange-100 border border-gray-300"></div>
-                <span class="ml-2 text-sm text-gray-700">ริมหน้าต่าง 🌊</span>
+                <div class="w-4 h-4 bg-[#E22427] border border-gray-300"></div>
+                <span class="ml-2 text-sm text-gray-700">มีคนนั่ง</span>
             </div>
             <div class="flex items-center">
-                <div class="w-4 h-4 bg-red-200 border border-gray-300"></div>
-                <span class="ml-2 text-sm text-gray-700">ในร้าน 🏠</span>
+                <div class="w-4 h-4 bg-[#fbc02d] border border-gray-300"></div>
+                <span class="ml-2 text-sm text-gray-700">จอง</span>
             </div>
         </div>
 
@@ -196,82 +192,55 @@
     </div>
 
     <!-- Table Display -->
-    <div class="max-w-7xl mx-auto grid grid-cols-3 items-start gap-6 mt-6">
+    
         <!-- ✅ ส่วน "สถานะโต๊ะ" แยกออกมาต่างหาก -->
         <div class="col-span-3 w-full flex justify-center">
             <h1 class="text-center text-3xl font-bold mt-6 mb-8">สถานะโต๊ะ</h1>
         </div>
 
-        <!-- ✅ รูปแผนผังโต๊ะ -->
-        <div class="p-4 flex justify-center">
-            <img src="/static/images/backk.png" alt="Table Layout Guide" class="rounded-lg shadow-lg w-full max-w-sm">
-        </div>
 
         <!-- ✅ คอลัมน์หลักของตารางโต๊ะ -->
         <div class="col-span-2">
-            <!-- ✅ แถบสี (Legend) -->
-            <div class="flex space-x-4 mb-4">
-                <div class="flex items-center">
-                    <div class="w-4 h-4 bg-[#259b24] border border-gray-300"></div>
-                    <span class="ml-2 text-sm text-gray-700">ว่าง</span>
-                </div>
-                <div class="flex items-center">
-                    <div class="w-4 h-4 bg-[#E22427] border border-gray-300"></div>
-                    <span class="ml-2 text-sm text-gray-700">มีคนนั่ง</span>
-                </div>
-                <div class="flex items-center">
-                    <div class="w-4 h-4 bg-[#fbc02d] border border-gray-300"></div>
-                    <span class="ml-2 text-sm text-gray-700">จอง</span>
-                </div>
-            </div>
+            
 
             <!-- ✅ ตารางโต๊ะ -->
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-2 place-items-center">
+            <svg class="table-area" id="table-layout" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000">
                 {% for table in table_data %}
-                <div class="p-4 rounded-lg text-center shadow-lg
-                    {% if table.zone == 'นอกร้าน' %} bg-yellow-100
-                    {% elif table.zone == 'ริมหน้าต่าง' %} bg-orange-100
-                    {% elif table.zone == 'ในร้าน' %} bg-red-200
-                    {% else %} bg-green-200 {% endif %}">
+                <g id="table-{{ table.table_id }}" 
+                    transform="translate({{ table.x_position }}, {{ table.y_position }})"
+                    data-table-id="{{ table.table_id }}"
+                    onclick="submitTableBooking('{{ table.table_id }}', '{{ table.table_name }}', '{{ selected_date }}', '{{ selected_time }}', {% if has_active_booking %}true{% else %}false{% endif %}, '{{ table.table_status }}')">
                     
-                    <form method="POST" action="{% url 'booking' table.table_name %}">
-                        {% csrf_token %}
-                        <input type="hidden" name="date" value="{{ selected_date }}">
-                        <input type="hidden" name="time" value="{{ selected_time }}">
-                        
-                        <!-- ตรวจสอบการจองของผู้ใช้ -->
-                        <button type="submit" onclick="handleTableClick(event, {% if table.table_status == 'booked' or table.table_status == 'occupied' %}true{% else %}false{% endif %}, {% if has_active_booking %}true{% else %}false{% endif %})">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" class="cursor-pointer w-40 h-40 md:w-44 md:h-44">
-                                <circle cx="100" cy="100" r="50"
-                                    {% if table.table_status == 'available' %} fill="#259b24"
-                                    {% elif table.table_status == 'occupied' %} fill="#E22427"
-                                    {% elif table.table_status == 'booked' %} fill="#fbc02d"
-                                    {% endif %} />
-                                <text x="100" y="105" text-anchor="middle" fill="white" font-size="14" font-weight="bold">
-                                    {{ table.table_name }}
-                                </text>
-                                {% for chair in table.chairs %}
-                                <circle cx="{{ chair.x }}" cy="{{ chair.y }}" r="10" fill="#ddd" stroke="black" stroke-width="1" />
-                                {% endfor %}
-                            </svg>
-                        </button>
-                    </form>
-                    
-                    
+                    <!-- ✅ กรอบแสดงตำแหน่งโต๊ะ -->
+                    <rect x="50" y="50" width="150" height="160" rx="10" ry="10" fill="none" stroke="#D97706" stroke-width="2"/>
             
-                    <!-- ชื่อโซน -->
-                    <p class="text-gray-700 font-semibold mt-2">
-                        {% if table.zone %}
-                            Zone: {{ table.zone }}
-                        {% else %}
-                            ไม่ระบุโซน
-                        {% endif %}
-                    </p>
-                </div>
+                    <!-- ✅ แสดงสถานะของโต๊ะ -->
+                    <circle cx="125" cy="115" r="40"
+                        {% if table.table_status == 'available' %} fill="#259b24"
+                        {% elif table.table_status == 'occupied' %} fill="#E22427"
+                        {% elif table.table_status == 'booked' %} fill="#fbc02d"
+                        {% endif %} />
+            
+                    <!-- ✅ ชื่อโต๊ะ -->
+                    <text x="125" y="120" text-anchor="middle" fill="white" font-size="14" font-weight="bold">
+                        {{ table.table_name }}
+                    </text>
+            
+                    <!-- ✅ ฟอร์มจองซ่อนอยู่ -->
+                    <foreignObject x="55" y="160" width="140" height="40">
+                        <form id="booking-form-{{ table.table_id }}" method="POST" action="{% url 'booking' table.table_name %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="date" id="hidden-date-{{ table.table_id }}" value="{{ selected_date }}">
+                            <input type="hidden" name="time" id="hidden-time-{{ table.table_id }}" value="{{ selected_time }}">
+                        </form>
+                        
+                    </foreignObject>
+                </g>
                 {% endfor %}
-            </div>
+            </svg>
+            
         </div>
-    </div>
+    
 </body>
 
 </html>

@@ -6,96 +6,45 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Menu</title>
     <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+
     <style>
-        /* ใช้ฟอนต์ Chakra Petch ทั่วทั้งหน้า */
         html, body {
             font-family: 'Chakra Petch', sans-serif !important;
         }
-    
-        /* เพิ่มแอนิเมชั่นให้การ์ดเมนู */
+
         .menu-card {
             transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
-    
+
         .menu-card:hover {
             transform: scale(1.05) translateY(-5px);
             box-shadow: 0px 10px 20px rgba(0, 0, 0, 0.2);
         }
-    
-        /* เอฟเฟกต์เลื่อนของรูปภาพ */
+
         .menu-card img {
             transition: transform 0.3s ease;
         }
-    
+
         .menu-card:hover img {
             transform: scale(1.1);
         }
     </style>
     
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        function addToCart(foodId) {
-            fetch(`/cart/add/`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRFToken": "{{ csrf_token }}"
-                },
-                body: JSON.stringify({ "food_id": foodId })
-            })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        showPopup(`เพิ่ม "${data.food_name}" ลงในตะกร้าแล้ว!`);
-                    } else {
-                        showPopup(data.message || "คุณต้องจองโต๊ะก่อนสั่งอาหาร", true);
-                    }
-                })
-                .catch(error => {
-                    console.error("Error:", error);
-                    showPopup("เกิดข้อผิดพลาดในการเชื่อมต่อ", true);
-                });
-        }
-
-        function showPopup(message, isError = false) {
-            const popup = document.getElementById("popup");
-            const popupMessage = document.getElementById("popup-message");
-
-            popupMessage.textContent = message;
-            popup.classList.remove("hidden");
-
-            if (isError) {
-                popup.classList.add("bg-red-500");
-                popup.classList.remove("bg-green-500");
-            } else {
-                popup.classList.add("bg-green-500");
-                popup.classList.remove("bg-red-500");
-            }
-
-            setTimeout(() => {
-                popup.classList.add("hidden");
-            }, 3000);
-        }
-    </script>
 </head>
 
 <body class="bg-gray-100">
-    <!-- Navigation Bar -->
     {% include 'user_nav.html' %}
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-       
-
+    
+    
     <h1 class="text-center text-3xl font-bold mb-6 mt-6">เมนูอาหาร</h1>
 
-    <!-- Navigation for categories -->
     <div class="flex justify-center mb-6">
-        <!-- หมวดหมู่ "ทั้งหมด" -->
-        <a href="/menu/" 
-           class="{% if  category_name %}bg-yellow-300{% else %}bg-yellow-500{% endif %} text-black px-4 py-2 rounded mx-2 hover:bg-yellow-400">
+        <a href="/menu/"
+           class="{% if category_name %}bg-yellow-300{% else %}bg-yellow-500{% endif %} text-black px-4 py-2 rounded mx-2 hover:bg-yellow-400">
             ทั้งหมด
         </a>
-    
-        <!-- หมวดหมู่อื่น -->
         {% for category in categories %}
         <a href="/menu/?category={{ category.name }}" 
            class="{% if category.name == category_name %}bg-yellow-300 hover:bg-yellow-300{% else %}bg-yellow-500 hover:bg-yellow-400{% endif %} text-black px-4 py-2 rounded mx-2">
@@ -103,13 +52,13 @@
         </a>
         {% endfor %}
     </div>
+    <!-- แสดงข้อความถ้าไม่มีเมนู -->
+    {% if menus|length == 0 %}
+    <p class="text-center text-red-500 text-lg font-semibold">
+        ไม่มีเมนูในหมวด "{{ category_name }}"
+    </p>
+    {% endif %}
     
-    
-    
-    
-    
-
-    <!-- Menu items -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
         {% for item in menus %}
         <div class="menu-card border p-4 rounded-lg shadow bg-white group">
@@ -123,11 +72,9 @@
                     
                     {% if item.promotion %}
                         <p class="text-sm text-gray-400 line-through">{{ item.menu.price|floatformat:2 }} บาท</p>
-    
                         <p class="text-sm text-red-600 font-bold">
                             {{ item.discounted_price|floatformat:2 }} บาท
                         </p>
-    
                         <p class="text-xs text-green-500">
                             {% if item.promotion.discount_type == "percentage" %}
                                 ลด {{ item.promotion.discount_value }}%
@@ -138,10 +85,10 @@
                     {% else %}
                         <p class="text-sm text-gray-500">{{ item.menu.price|floatformat:2 }} บาท</p>
                     {% endif %}
-    
+
                     <p class="text-sm text-gray-400">ประเภท: {{ item.menu.category.name }}</p>
                 </div>
-    
+
                 {% if active_booking %}
                 <button onclick="addToCart({{ item.menu.id }})"
                     class="bg-green-500 text-white rounded-full w-8 h-8 flex justify-center items-center transform transition-transform duration-300 hover:scale-110">
@@ -158,12 +105,8 @@
         {% endfor %}
     </div>
     
-    
-
-    <!-- Pagination -->
     <div class="mt-6 flex justify-center space-x-4">
         {% if menus.has_previous %}
-        <!-- ลูกศรย้อนกลับ -->
         <a href="?page={{ menus.previous_page_number }}{% if category_name %}&category={{ category_name }}{% endif %}" 
            class="px-3 py-2 border border-gray-300 rounded hover:bg-gray-200 flex items-center">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -172,14 +115,12 @@
             <span class="ml-1 hidden md:inline">Previous</span>
         </a>
         {% endif %}
-    
-        <!-- หมายเลขหน้าปัจจุบัน -->
+
         <span class="px-3 py-2 border border-gray-300 rounded bg-gray-100">
             Page {{ menus.number }} of {{ menus.paginator.num_pages }}
         </span>
-    
+
         {% if menus.has_next %}
-        <!-- ลูกศรไปข้างหน้า -->
         <a href="?page={{ menus.next_page_number }}{% if category_name %}&category={{ category_name }}{% endif %}" 
            class="px-3 py-2 border border-gray-300 rounded hover:bg-gray-200 flex items-center">
             <span class="mr-1 hidden md:inline">Next</span>
@@ -189,6 +130,54 @@
         </a>
         {% endif %}
     </div>
+    <script>
+        function addToCart(foodId) {
+            const formData = new FormData();
+            formData.append('food_id', foodId);
+    
+            fetch('/cart/add/', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Check if the response is successful
+                if (data.success) {
+                    showPopup(`เพิ่ม ${data.food_name} ลงในตะกร้าแล้ว!`);
+                } else {
+                    showPopup(data.message || "คุณต้องจองโต๊ะก่อนสั่งอาหาร", true);
+                }
+            })
+            .catch(error => {
+                showPopup("เกิดข้อผิดพลาดในการเชื่อมต่อ", true);
+            });
+        }
+    
+        function showPopup(message, isError = false) {
+            const popup = document.getElementById("popup");
+            const popupMessage = document.getElementById("popup-message");
+    
+            popupMessage.textContent = message;
+            popup.classList.remove("hidden");
+    
+            if (isError) {
+                popup.classList.add("bg-red-500");
+                popup.classList.remove("bg-green-500");
+            } else {
+                popup.classList.add("bg-green-500");
+                popup.classList.remove("bg-red-500");
+            }
+    
+            // Hide the popup after 3 seconds
+            setTimeout(() => {
+                popup.classList.add("hidden");
+            }, 3000);
+        }
+    </script>
+    
 
     <!-- Popup -->
     <div id="popup" class="fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg hidden">

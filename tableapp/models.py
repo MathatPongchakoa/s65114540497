@@ -48,8 +48,8 @@ class Table(models.Model):
     zone = models.ForeignKey('Zone', on_delete=models.SET_NULL, null=True, blank=True)  # เชื่อมกับ Zone
 
     # ✅ เพิ่มฟิลด์ตำแหน่ง x, y สำหรับการลากโต๊ะ
-    x_position = models.IntegerField(default=100)  # ตำแหน่ง x เริ่มต้น
-    y_position = models.IntegerField(default=100)  # ตำแหน่ง y เริ่มต้น
+    x_position = models.FloatField(default=0.00)  # ✅ ควรเป็น FloatField
+    y_position = models.FloatField(default=0.00)  # ตำแหน่ง y เริ่มต้น
 
     def save(self, *args, **kwargs):
         """ ถ้าเพิ่มโต๊ะใหม่และไม่มีค่า x, y ให้กำหนดอัตโนมัติ """
@@ -120,7 +120,7 @@ class Menu(models.Model):
 
 
 class Cart(models.Model):
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     is_active = models.BooleanField(default=True)
     table = models.ForeignKey('Table', on_delete=models.SET_NULL, null=True, blank=True)
 

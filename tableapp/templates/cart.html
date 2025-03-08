@@ -7,6 +7,7 @@
     <title>Cart</title>
     <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 
     <style>
         body {
@@ -67,39 +68,53 @@
                 },
                 body: JSON.stringify({ action: action })
             })
-            .then(response => response.json())
+            .then(response => {
+                console.log(response);  // เช็คค่าที่ได้รับจากเซิร์ฟเวอร์
+                return response.json();
+            })
             .then(data => {
+                console.log(data);  // เช็คข้อมูลที่ส่งกลับจากเซิร์ฟเวอร์
                 if (data.success) {
-                    location.reload();
+                    location.reload(); // รีเฟรชหน้าเมื่ออัปเดตเสร็จ
                 } else {
                     showPopup(data.error || "เกิดข้อผิดพลาด", true);
                 }
             })
             .catch(error => {
+                console.error("เกิดข้อผิดพลาดในการเชื่อมต่อ", error);
                 showPopup("เกิดข้อผิดพลาดในการเชื่อมต่อ", true);
             });
         }
 
+
         function checkReservationBeforeOrder() {
-            fetch('/cart/check-reservation/', {
-                method: "GET",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRFToken": "{{ csrf_token }}"
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.has_reservation) {
-                    confirmOrder();
-                } else {
-                    showPopup("กรุณาจองโต๊ะก่อนยืนยันการสั่งอาหาร", true);
-                }
-            })
-            .catch(error => {
-                showPopup("เกิดข้อผิดพลาดในการเชื่อมต่อ", true);
-            });
+        // ค้นหารายการสินค้าในตะกร้า
+        const cartItems = document.querySelectorAll(".cart-item");  // ตรวจสอบว่า .cart-item ถูกใช้ในตะกร้าหรือไม่
+        if (cartItems.length === 0) {
+            showPopup("ตะกร้าของคุณว่าง กรุณาเพิ่มสินค้าในตะกร้าก่อนทำการสั่งซื้อ", true);
+            return;  // หยุดการทำงาน
         }
+
+        fetch('/cart/check-reservation/', {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": "{{ csrf_token }}"
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.has_reservation) {
+                confirmOrder();
+            } else {
+                showPopup("กรุณาจองโต๊ะก่อนยืนยันการสั่งอาหาร", true);
+            }
+        })
+        .catch(error => {
+            showPopup("เกิดข้อผิดพลาดในการเชื่อมต่อ", true);
+        });
+    }
+
 
         function confirmOrder() {
             fetch('/cart/confirm-order/', {
@@ -111,6 +126,7 @@
             })
             .then(response => response.json())
             .then(data => {
+                console.log(data);  // ดูข้อมูลที่ได้รับจากเซิร์ฟเวอร์
                 if (data.success) {
                     showPopup("การสั่งซื้อสำเร็จ!", false, () => {
                         window.location.href = '/order-summary/';
@@ -120,9 +136,12 @@
                 }
             })
             .catch(error => {
+                console.error("เกิดข้อผิดพลาดในการเชื่อมต่อ", error);  // จัดการข้อผิดพลาดจากการเชื่อมต่อ
                 showPopup("เกิดข้อผิดพลาดในการเชื่อมต่อ", true);
             });
         }
+
+
     </script>
 </head>
 
@@ -144,29 +163,31 @@
             </thead>
             <tbody>
                 {% for item in cart_items %}
-                <tr id="row-{{ item.id }}">
+                <tr id="row-{{ item.id }}" class="cart-item">
+
                     <td class="border border-gray-300 px-4 py-2">{{ item.menu.food_name }}</td>
                     <td class="border border-gray-300 px-4 py-2 text-center">
-                        <button onclick="decreaseQuantity({{ item.id }}, {{ item.quantity }})"
+                        <button onclick="decreaseQuantity({{ item.id }} , {{ item.quantity }})"
                             class="bg-red-500 text-white px-2 py-1 rounded">-</button>
                         <span id="quantity-{{ item.id }}" class="mx-2">{{ item.quantity }}</span>
                         <button onclick="increaseQuantity({{ item.id }})"
                             class="bg-green-500 text-white px-2 py-1 rounded">+</button>
                     </td>
                     <td class="border border-gray-300 px-4 py-2 text-center">
-                        {% if item.discounted_price and item.discounted_price < item.menu.price %}
-                            <span class="text-gray-400 line-through">{{ item.menu.price|floatformat:2 }} บาท</span><br>
-                            <span id="price-{{ item.id }}" class="text-red-600 font-bold price-item"
-                                  data-unit-price="{{ item.discounted_price }}">
-                                  {{ item.total_price|floatformat:2 }} บาท
+                        {% if item.discounted_price and item.discounted_price < item.original_price %}
+                            <span class="text-gray-400 line-through">{{ item.original_price|floatformat:2 }} บาท</span><br>
+                            <span id="price-{{ item.id }}" class="text-red-600 font-bold price-item">
+                                {{ item.total_price|floatformat:2 }} บาท
                             </span>
                         {% else %}
-                            <span id="price-{{ item.id }}" class="text-gray-500 price-item"
-                                  data-unit-price="{{ item.menu.price }}">
-                                  {{ item.total_price|floatformat:2 }} บาท
+                            <span id="price-{{ item.id }}" class="text-gray-500 price-item">
+                                {{ item.total_price|floatformat:2 }} บาท
                             </span>
                         {% endif %}
                     </td>
+                    
+                    
+                    
                     <td class="border border-gray-300 px-4 py-2 text-center">
                         <button onclick="removeItem({{ item.id }})"
                             class="bg-red-500 text-white px-2 py-1 rounded">ลบ</button>

@@ -89,17 +89,17 @@
         </table>
 
         <!-- Pagination -->
-        <div class="mt-4 flex justify-center">
+        <div class="mt-6 flex justify-center space-x-4">
             {% if orders.has_previous %}
-            <a href="?page={{ orders.previous_page_number }}" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 mx-1">
+            <a href="?page={{ orders.previous_page_number }}" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
                 ก่อนหน้า
             </a>
             {% endif %}
 
-            <span class="px-4 py-2">{{ orders.number }} / {{ orders.paginator.num_pages }}</span>
+            <span class="px-4 py-2">หน้า {{ orders.number }} จาก {{ orders.paginator.num_pages }}</span>
 
             {% if orders.has_next %}
-            <a href="?page={{ orders.next_page_number }}" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 mx-1">
+            <a href="?page={{ orders.next_page_number }}" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
                 ถัดไป
             </a>
             {% endif %}

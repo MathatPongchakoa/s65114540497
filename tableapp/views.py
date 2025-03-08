@@ -31,6 +31,12 @@ from urllib.parse import urlencode
 from collections import defaultdict 
 
 from django.http import JsonResponse
+from django.utils.timezone import localdate
+from collections import defaultdict
+from datetime import datetime
+from django.shortcuts import render
+from django.utils.timezone import make_aware
+from .models import Order, OrderItem
 
 
 def is_staff(user):
@@ -48,6 +54,10 @@ def table_status_view(request):
     selected_date = request.GET.get('date', None)
     selected_time = request.GET.get('time', None)
 
+    # ✅ ถ้า selected_date เป็น None ให้ใช้วันที่ปัจจุบัน
+    if not selected_date:
+        selected_date = localdate().strftime("%Y-%m-%d")  # กำหนดเป็น YYYY-MM-DD
+
     zones = Zone.objects.all()
     tables = Table.objects.all()
     selected_zone = None
@@ -61,43 +71,31 @@ def table_status_view(request):
         selected_zone = get_object_or_404(Zone, id=selected_zone_id)
         tables = tables.filter(zone=selected_zone)
 
-    booked_table_ids = []
-    booked_table_details = {}
+    booked_table_ids = set()
 
     if selected_date and selected_time:
-        selected_datetime = datetime.strptime(f"{selected_date} {selected_time}", "%Y-%m-%d %H:%M")
+        selected_datetime = make_aware(datetime.strptime(f"{selected_date} {selected_time}", "%Y-%m-%d %H:%M"))
 
         booked_tables = Booking.objects.filter(
             booking_date=selected_date,
-            booking_time__lte=selected_datetime,
-            booking_end_time__gte=selected_datetime,
+            booking_time__lte=selected_datetime.time(),
+            booking_end_time__gte=selected_datetime.time(),
             status__in=["pending", "confirmed"]
-        ).values_list('table_id', 'user_id')
+        ).values_list('table_id', flat=True)
 
-        for table_id, user_id in booked_tables:
-            booked_table_ids.append(table_id)
-            if user_id != request.user.id:
-                booked_table_details[table_id] = user_id
+        booked_table_ids.update(booked_tables)
 
     table_data = []
     for table in tables:
         if table.id in booked_table_ids:
             current_status = "booked"
-            is_booked_by_other = table.id in booked_table_details
         elif table.table_status == "occupied":
             current_status = "occupied"
         else:
             current_status = "available"
-            is_booked_by_other = False
 
-        chairs = []
-        radius = 70
-        for i in range(table.seating_capacity):
-            angle = (360 / table.seating_capacity) * i
-            angle_rad = math.radians(angle)
-            x = round(100 + radius * math.cos(angle_rad), 2)
-            y = round(100 + radius * math.sin(angle_rad), 2)
-            chairs.append({'x': x, 'y': y})
+        x_position = table.x_position
+        y_position = table.y_position
 
         table_data.append({
             'table_id': table.id,
@@ -105,8 +103,8 @@ def table_status_view(request):
             'seating_capacity': table.seating_capacity,
             'table_status': current_status,
             'zone': table.zone.name if table.zone else None,
-            'chairs': chairs,
-            'is_booked_by_other': is_booked_by_other,
+            'x_position': x_position,
+            'y_position': y_position,
         })
 
     context = {
@@ -114,14 +112,15 @@ def table_status_view(request):
         'selected_zone': selected_zone,
         'table_data': table_data,
         'has_active_booking': has_active_booking,
-        'selected_date': selected_date,
+        'selected_date': selected_date,  
         'selected_time': selected_time,
     }
 
     return render(request, 'table_status.html', context)
 
+from django.shortcuts import redirect
 
-@login_required(login_url='login')
+@login_required
 def booking_view(request, table_name):
     table = get_object_or_404(Table, table_name=table_name)
 
@@ -130,233 +129,171 @@ def booking_view(request, table_name):
         table=table
     ).exclude(status="completed").first()
 
-    if active_booking:
-        return redirect('table_status')
-
     selected_date = None
-    selected_time = None
-    selected_end_time = None
+    booked_times = []
+    time_error = None
 
     if request.method == "POST":
         selected_date = request.POST.get('date')
-        selected_time = request.POST.get('time')
-        selected_end_time = request.POST.get('end_time')
 
-        if not selected_date or not selected_time or not selected_end_time:
+        if not selected_date:
+            time_error = "กรุณาเลือกวันที่"
             return render(request, "booking.html", {
                 "success": False,
-                "message": "กรุณาเลือกวันที่และเวลาเริ่มต้นและเวลาสิ้นสุด",
+                "message": time_error,
                 "table_name": table.table_name,
                 "seating_capacity": table.seating_capacity,
                 "active_booking": active_booking,
                 "selected_date": selected_date,
-                "selected_time": selected_time,
-                "selected_end_time": selected_end_time
+                "booked_times": booked_times,
             })
 
         try:
-            booking_start = make_aware(datetime.strptime(f"{selected_date} {selected_time}", "%Y-%m-%d %H:%M"))
-            booking_end = make_aware(datetime.strptime(f"{selected_date} {selected_end_time}", "%Y-%m-%d %H:%M"))
+            selected_date_obj = datetime.strptime(selected_date, "%Y-%m-%d").date()
 
-            overlapping_user_bookings = Booking.objects.filter(
-                user=request.user,
-                booking_date=booking_start.date()
-            ).filter(
-                booking_time__lt=booking_end.time(),
-                booking_end_time__gt=booking_start.time()
-            ).exclude(status="completed")
-
-            if overlapping_user_bookings.exists():
-                return render(request, "booking.html", {
-                    "success": False,
-                    "message": "คุณมีการจองโต๊ะอยู่แล้วในช่วงเวลานี้",
-                    "table_name": table.table_name,
-                    "seating_capacity": table.seating_capacity,
-                    "active_booking": active_booking,
-                    "selected_date": selected_date,
-                    "selected_time": selected_time,
-                    "selected_end_time": selected_end_time
-                })
-
-            conflicting_bookings = Booking.objects.filter(
+            # กรองการจองจากฐานข้อมูลในวันที่เลือก
+            booked_times = Booking.objects.filter(
                 table=table,
-                booking_date=booking_start.date()
-            ).filter(
-                booking_time__lt=booking_end.time(),
-                booking_end_time__gt=booking_start.time()
-            ).exclude(status="completed")
+                booking_date=selected_date_obj
+            ).values("booking_time", "booking_end_time")
 
-            if conflicting_bookings.exists():
-                return render(request, "booking.html", {
-                    "success": False,
-                    "message": "เวลานี้โต๊ะถูกจองแล้ว",
-                    "table_name": table.table_name,
-                    "seating_capacity": table.seating_capacity,
-                    "active_booking": active_booking,
-                    "selected_date": selected_date,
-                    "selected_time": selected_time,
-                    "selected_end_time": selected_end_time
-                })
+            # ใช้ Paginator เพื่อแบ่งหน้าของรายการ
+            paginator = Paginator(booked_times, 5)
+            page_number = request.GET.get('page')
+            page_obj = paginator.get_page(page_number)
 
-            Cart.objects.filter(user=request.user, is_active=False).delete()
+            # สร้าง list ของการจอง
+            booked_times_list = list(page_obj)
 
-            cart, created = Cart.objects.update_or_create(
-                user=request.user,
-                defaults={"is_active": True, "table": table}
-            )
+            # เพิ่มข้อมูลการจองใหม่ถ้าผู้ใช้ยังไม่เคยจอง
+            booking_time = request.POST.get('booking_time')
+            booking_end_time = request.POST.get('booking_end_time')
 
-            new_booking = Booking.objects.create(
-                table=table,
-                booking_date=booking_start.date(),
-                booking_time=booking_start.time(),
-                booking_end_time=booking_end.time(),
-                user=request.user,
-                status='pending'
-            )
+            # ตรวจสอบการจอง
+            if not active_booking:
+                if booking_time and booking_end_time:
+                    new_booking = Booking(
+                        user=request.user,
+                        table=table,  # เพิ่มการส่ง table_id
+                        booking_date=selected_date_obj,
+                        booking_time=booking_time,
+                        booking_end_time=booking_end_time,
+                        status="pending"
+                    )
+                    new_booking.save()
+                    active_booking = new_booking
 
-            # ตรวจสอบว่ามีการบันทึกหรือไม่
-            if new_booking:
-                print(f"Booking created successfully: {new_booking.id}")
-            else:
-                print("Failed to create booking.")
+                    # ตั้งค่า table_id ใน Cart หากยังไม่มี
+                    cart = Cart.objects.filter(user=request.user, is_active=True).first()
+                    if cart:
+                        cart.table = table  # เพิ่ม table_id ใน Cart
+                        cart.save()
 
-            if table.table_status != "occupied":
-                table.table_status = "booked"
-                table.save()
+                    # หลังจากการจองสำเร็จ, ควรทำการเปลี่ยนเส้นทางไปยังหน้า my_bookings
+                    return redirect('my_bookings')  # ใช้ URL ที่ถูกต้องสำหรับ my_bookings
 
-            return redirect('my_bookings')
+        except ValueError:
+            booked_times = []
 
-        except ValueError as e:
-            print(f"Error: {str(e)}")  # เพิ่มการแสดงข้อผิดพลาดใน log
-            return render(request, "booking.html", {
-                "success": False,
-                "message": f"เกิดข้อผิดพลาด: {str(e)}",
-                "table_name": table.table_name,
-                "seating_capacity": table.seating_capacity,
-                "active_booking": active_booking,
-                "selected_date": selected_date,
-                "selected_time": selected_time,
-                "selected_end_time": selected_end_time
-            })
-
-    context = {
+    return render(request, "booking.html", {
         "table_name": table.table_name,
         "seating_capacity": table.seating_capacity,
         "active_booking": active_booking,
         "selected_date": selected_date,
-        "selected_time": selected_time,
-        "selected_end_time": selected_end_time,
-    }
+        "booked_times": booked_times,
+        "page_obj": page_obj,
+    })
 
-    return render(request, "booking.html", context)
+
+
+
+
 
 
 @login_required
 def cancel_booking(request):
     if request.method == 'POST':
         booking_id = request.POST.get('booking_id')
-        print(f"📌 Debug: Booking ID received - {booking_id}")
-
         booking = get_object_or_404(Booking, id=booking_id, user=request.user)
-        print(f"📌 Debug: Found Booking - {booking}")
 
-        # ✅ สร้าง `booking_start` และ `booking_end`
         booking_start = make_aware(datetime.combine(booking.booking_date, booking.booking_time))
         booking_end = make_aware(datetime.combine(booking.booking_date, booking.booking_end_time))
 
-        print(f"📌 Debug: Computed Booking Start - {booking_start}, End - {booking_end}")
-
-        # ✅ ค้นหา Order โดยใช้ช่วงเวลาที่ยืดหยุ่นขึ้น
         related_orders = Order.objects.filter(
             user=request.user,
             table_name=booking.table.table_name,
-            booking_start__gte=booking_start - timedelta(seconds=1),  # เช็คช่วงกว้างขึ้น 1 วินาที
-            booking_start__lt=booking_start + timedelta(seconds=1)    # เพื่อกันปัญหาความละเอียดของเวลา
+            booking_start__gte=booking_start - timedelta(seconds=1),
+            booking_start__lt=booking_start + timedelta(seconds=1)
         )
 
-        print(f"📌 Debug: Related Orders Query - {related_orders.query}")
-
         if related_orders.exists():
-            print(f"✅ Order(s) found: {[order.id for order in related_orders]}")
             related_orders.update(status="cancelled")
-            print(f"✅ Updated Order Status to 'cancelled' for Order(s): {[order.id for order in related_orders]}")
-        else:
-            print(f"⚠️ No related orders found for Booking ID {booking_id}")
 
-            # ✅ Debug ว่ามี `Order` อะไรบ้างในระบบ
-            all_orders = Order.objects.all()
-            for order in all_orders:
-                print(f"🧐 Order Debug - ID: {order.id}, Table: {order.table_name}, User: {order.user.username}, Booking Start: {localtime(order.booking_start)}")
+        Cart.objects.filter(user=request.user).delete()
 
-        # ✅ ลบ Cart ที่เกี่ยวข้อง
-        carts = Cart.objects.filter(user=request.user)
-        if carts.exists():
-            print(f"✅ Deleting {carts.count()} Cart(s) for user {request.user.username}")
-            carts.delete()
-        else:
-            print(f"⚠️ No active cart found for user {request.user.username}")
-
-        # ✅ ตรวจสอบการจองอื่นที่ยัง active
         table = booking.table
         other_active_bookings = Booking.objects.filter(
             table=table,
             status__in=["occupied", "pending"]
         ).exclude(id=booking.id)
 
-        print(f"📌 Debug: Other Active Bookings for Table {table.table_name} - {other_active_bookings.count()} found")
-
-        # ✅ เปลี่ยนสถานะโต๊ะก็ต่อเมื่อไม่มีการจองที่ active เหลืออยู่
         if not other_active_bookings.exists():
-            print(f"✅ No active bookings left, setting table {table.table_name} status to 'available'")
             table.table_status = "available"
         elif other_active_bookings.filter(status="occupied").exists():
-            print(f"✅ There are 'occupied' bookings, setting table {table.table_name} status to 'occupied'")
             table.table_status = "occupied"
         elif other_active_bookings.filter(status="pending").exists():
-            print(f"✅ There are 'pending' bookings, setting table {table.table_name} status to 'booked'")
+            table.table_status = "booked"
 
         table.save()
-
-        # ✅ ลบการจอง
-        print(f"✅ Deleting Booking {booking.id}")
         booking.delete()
 
-        return redirect('my_bookings')  # กลับไปหน้าแสดงรายการจอง
+        return redirect('my_bookings')
 
     return JsonResponse({'success': False, 'message': 'Method not allowed'}, status=405)
 
-# ฟังก์ชันแสดงหน้า success (จองโต๊ะสำเร็จ)
-def success_view(request):
-    return render(request, 'success.html')
+
 
 
 def login_view(request):
-    if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
+    errors = {}  # ✅ กำหนดค่าให้ errors ตั้งแต่ต้น
+    username = ""
 
-        if username and password:
-            user = authenticate(request, username=username, password=password)
-            if user is not None:
-                login(request, user)
-                
-                # ตรวจสอบว่าเป็น superuser หรือไม่
-                if user.is_superuser:
-                    return redirect('sales_report')  # Redirect ไปยังหน้า รายงานยอดขาย สำหรับเจ้าของร้าน
-                
-                # ตรวจสอบว่าเป็น staff หรือไม่
-                elif user.is_staff:
-                    return redirect('table_management')  # Redirect ไปยัง table_management สำหรับ staff
-                
-                else:
-                    return redirect('table_status')  # Redirect ไปยัง table_status สำหรับผู้ใช้ทั่วไป
+    if request.method == "POST":
+        username = request.POST.get("username", "").strip()
+        password = request.POST.get("password", "").strip()
+
+        # ✅ ตรวจสอบว่าช่องกรอกข้อมูลว่างหรือไม่
+        if not username:
+            errors["username"] = "กรุณากรอกชื่อผู้ใช้"
+
+        if not password:
+            errors["password"] = "กรุณากรอกรหัสผ่าน"
+
+        # ✅ ถ้าช่องไหนว่าง ให้ส่ง errors กลับไปที่ login.html
+        if errors:
+            return render(request, "login.html", {"errors": errors, "username": username})
+
+        # ✅ ตรวจสอบว่า Username มีอยู่จริงหรือไม่
+        if not User.objects.filter(username=username).exists():
+            errors["username"] = "ไม่มีชื่อผู้ใช้ในระบบ"
+            return render(request, "login.html", {"errors": errors, "username": username})
+
+        # ✅ ตรวจสอบข้อมูลผู้ใช้
+        user = authenticate(request, username=username, password=password)
+
+        if user is not None:
+            login(request, user)
+
+            if user.is_superuser:
+                return redirect("sales_report")  # Redirect ไปยังหน้า รายงานยอดขาย สำหรับเจ้าของร้าน
+            elif user.is_staff:
+                return redirect("table_management")  # Redirect ไปยัง table_management สำหรับ staff
             else:
-                print(f"Authentication failed for user: {username}")
-                return render(request, 'login.html', {'error': 'Invalid username or password'})
+                return redirect("table_status")  # Redirect ไปยัง table_status สำหรับผู้ใช้ทั่วไป
         else:
-            return render(request, 'login.html', {'error': 'Both fields are required.'})
+            errors["password"] = "รหัสผ่านไม่ถูกต้อง"
 
-    return render(request, 'login.html')
+    return render(request, "login.html", {"errors": errors, "username": username})
 
 @never_cache
 def logout_view(request):
@@ -364,41 +301,54 @@ def logout_view(request):
     return redirect('/')
 
 def register_view(request):
-    if request.method == 'POST':
-        username = request.POST.get('username')
-        email = request.POST.get('email')
-        first_name = request.POST.get('first_name')
-        last_name = request.POST.get('last_name')
-        password = request.POST.get('password')
-        confirm_password = request.POST.get('confirm_password')
+    if request.method == "POST":
+        username = request.POST.get("username", "").strip()
+        email = request.POST.get("email", "").strip()
+        first_name = request.POST.get("first_name", "").strip()
+        last_name = request.POST.get("last_name", "").strip()
+        password = request.POST.get("password", "").strip()
+        confirm_password = request.POST.get("confirm_password", "").strip()
 
-        # ตรวจสอบความถูกต้องของข้อมูล
+        errors = {}
+
+        # ✅ ตรวจสอบว่ามีฟิลด์ไหนว่างหรือไม่
+        if not all([username, email, first_name, last_name, password, confirm_password]):
+            errors["form"] = "กรุณากรอกข้อมูลให้ครบทุกช่อง"
+
+        # ✅ ตรวจสอบว่ารหัสผ่านและยืนยันรหัสผ่านตรงกันหรือไม่
         if password != confirm_password:
-            messages.error(request, "Passwords do not match.")
-            return render(request, 'register.html')
+            errors["confirm_password"] = "รหัสผ่านและยืนยันรหัสผ่านไม่ตรงกัน"
 
+        # ✅ ตรวจสอบว่ามี username หรือ email ซ้ำหรือไม่
         if CustomUser.objects.filter(username=username).exists():
-            messages.error(request, "Username already exists.")
-            return render(request, 'register.html')
+            errors["username"] = "ชื่อผู้ใช้นี้ถูกใช้แล้ว กรุณาใช้ชื่ออื่น"
 
         if CustomUser.objects.filter(email=email).exists():
-            messages.error(request, "Email already registered.")
-            return render(request, 'register.html')
+            errors["email"] = "อีเมลนี้ถูกใช้แล้ว กรุณาใช้อีเมลอื่น"
 
-        # สร้างผู้ใช้ใหม่
+        # ❌ ถ้ามีข้อผิดพลาด → ส่ง error กลับไปแสดงที่หน้า `register.html`
+        if errors:
+            return render(request, "register.html", {
+                "errors": errors,
+                "username": username,
+                "email": email,
+                "first_name": first_name,
+                "last_name": last_name,
+            })
+
+        # ✅ ถ้าข้อมูลถูกต้อง → สร้างบัญชีผู้ใช้ใหม่
         user = CustomUser.objects.create(
             username=username,
             email=email,
             first_name=first_name,
             last_name=last_name
         )
-        user.set_password(password)  # Hash รหัสผ่าน
+        user.set_password(password)  # เข้ารหัสรหัสผ่าน
         user.save()
 
-        messages.success(request, "Registration successful! Please login.")
-        return redirect('login')  # เปลี่ยนเส้นทางไปหน้า Login หลังสมัครเสร็จ
+        return render(request, "register.html", {"success": "ลงทะเบียนสำเร็จ! กรุณาเข้าสู่ระบบ"})
 
-    return render(request, 'register.html')
+    return render(request, "register.html")
 
 
 def password_reset_confirm_view(request, uidb64, token):
@@ -470,16 +420,16 @@ def my_bookings_view(request):
     return render(request, 'my_bookings.html', {'bookings': user_bookings})
 
 def menu_view(request):
-    # ✅ รับค่าพารามิเตอร์หมวดหมู่จาก URL
+    # รับค่าพารามิเตอร์หมวดหมู่จาก URL
     category_name = request.GET.get('category', None)
     categories = Category.objects.all()
 
-    # ✅ ตรวจสอบสถานะการจองของผู้ใช้งาน (เฉพาะเมื่อ Login)
+    # ตรวจสอบสถานะการจองของผู้ใช้งาน (เฉพาะเมื่อ Login)
     active_booking = None
     if request.user.is_authenticated:
         active_booking = Booking.objects.filter(user=request.user, status="pending").first()
 
-    # ✅ ดึงเมนูตามหมวดหมู่ที่เลือก
+    # ดึงเมนูตามหมวดหมู่ที่เลือก
     if category_name:
         try:
             category = Category.objects.get(name=category_name)
@@ -489,10 +439,10 @@ def menu_view(request):
     else:
         menus = Menu.objects.all()
 
-    # ✅ ดึงโปรโมชันที่กำลังใช้งาน
+    # ดึงโปรโมชันที่กำลังใช้งาน
     active_promotions = Promotion.objects.filter(is_active=True, start_time__lte=now(), end_time__gte=now())
 
-    # ✅ คำนวณราคาส่วนลดให้ถูกต้อง
+    # คำนวณราคาส่วนลดให้ถูกต้อง
     menu_data = []
     for menu in menus:
         promo = active_promotions.filter(promotion_menus__menu=menu).first()
@@ -510,21 +460,22 @@ def menu_view(request):
             "promotion": promo,
         })
 
-    # ✅ แบ่งหน้า (Pagination)
-    paginator = Paginator(menu_data, 8)
+    # แบ่งหน้า (Pagination)
+    paginator = Paginator(menu_data, 8)  # 8 เมนูต่อหน้า
     page = request.GET.get('page')
 
     try:
         menu_data = paginator.page(page)
     except PageNotAnInteger:
-        menu_data = paginator.page(1)
+        menu_data = paginator.page(1)  # ถ้าไม่มีหน้าที่เลือกให้ไปที่หน้าหมายเลข 1
     except EmptyPage:
-        menu_data = paginator.page(paginator.num_pages)
+        menu_data = paginator.page(paginator.num_pages)  # ถ้าเกินหน้าที่มีให้ไปที่หน้าสุดท้าย
 
+    # ส่งค่าไปยัง template
     context = {
         'categories': categories,
         'menus': menu_data,
-        'active_booking': active_booking,  # ✅ ตอนนี้จะไม่พังถ้ายังไม่ Login
+        'active_booking': active_booking,  # ตอนนี้จะไม่พังถ้ายังไม่ Login
         'category_name': category_name,
     }
     return render(request, 'menu.html', context)
@@ -561,23 +512,20 @@ def confirm_booking(request, booking_id):
 
     
 @login_required
-@csrf_exempt
 def add_to_cart(request):
     if request.method == "POST":
-        # ✅ ตรวจสอบว่าผู้ใช้มีการจองโต๊ะหรือไม่
         active_booking = Booking.objects.filter(user=request.user, status="pending").first()
         if not active_booking:
             return JsonResponse({"success": False, "message": "คุณต้องจองโต๊ะก่อนสั่งอาหาร"}, status=403)
 
-        try:
-            data = json.loads(request.body)
-            menu_id = data.get("food_id")
-            if not menu_id:
-                return JsonResponse({"success": False, "message": "ไม่พบเมนูที่เลือก"}, status=400)
+        menu_id = request.POST.get("food_id")
+        if not menu_id:
+            return JsonResponse({"success": False, "message": "ไม่พบเมนูที่เลือก"}, status=400)
 
+        try:
             menu_item = Menu.objects.get(id=menu_id)
 
-            # ✅ ตรวจสอบโปรโมชันที่ใช้งานอยู่
+            # ตรวจสอบโปรโมชันที่ใช้งาน
             active_promotion = Promotion.objects.filter(
                 is_active=True,
                 start_time__lte=now(),
@@ -585,23 +533,28 @@ def add_to_cart(request):
                 promotion_menus__menu=menu_item
             ).first()
 
-            # ✅ คำนวณราคาหลังหักส่วนลด
+            # คำนวณราคาหลังหักส่วนลด
             if active_promotion:
                 if active_promotion.discount_type == "percentage":
                     discounted_price = round(menu_item.price * (1 - (active_promotion.discount_value / 100)), 2)
-                else:  # fixed price discount
+                else:
                     discounted_price = round(max(0, menu_item.price - active_promotion.discount_value), 2)
             else:
-                discounted_price = menu_item.price  # ไม่มีโปรโมชัน ใช้ราคาปกติ
+                discounted_price = menu_item.price
 
-            # ✅ เพิ่มสินค้าเข้าตะกร้าและบันทึกราคาหลังหักส่วนลด
+            # เพิ่มสินค้าเข้าตะกร้า
             cart, created = Cart.objects.get_or_create(user=request.user, is_active=True)
-            cart_item, created = CartItem.objects.get_or_create(cart=cart, menu=menu_item)  # menu ต้องเป็น instance ของ Menu
+
+            # ตรวจสอบว่ามีการตั้งค่า table_id ใน Cart หรือไม่
+            if not cart.table:  # ถ้า table_id ยังไม่ได้ถูกตั้งค่าใน Cart
+                cart.table = active_booking.table  # ใช้ table ที่ผู้ใช้จอง
+                cart.save()
+
+            cart_item, created = CartItem.objects.get_or_create(cart=cart, menu=menu_item)
 
             if not created:
                 cart_item.quantity += 1  # เพิ่มจำนวนสินค้า
-
-            cart_item.price = discounted_price  # ✅ ใช้ราคาหลังหักส่วนลด
+            cart_item.price = discounted_price  # ใช้ราคาหลังหักส่วนลด
             cart_item.save()
 
             return JsonResponse({
@@ -616,18 +569,16 @@ def add_to_cart(request):
     return JsonResponse({"success": False, "message": "Invalid request method"}, status=405)
 
 def cart_view(request):
-    # ✅ เช็คว่าผู้ใช้ Login หรือยัง
     if not request.user.is_authenticated:
-        return redirect(f'/login/?next={request.path}')  # ✅ พาไป Login แล้วกลับมาหน้าตะกร้า
+        return redirect(f'/login/?next={request.path}')
 
     cart = Cart.objects.filter(user=request.user, is_active=True).first()
     cart_items = cart.items.all() if cart else []
 
-    total_price = 0  # ใช้เก็บยอดรวมของตะกร้า
-    updated_cart_items = []  # สร้าง list ใหม่เพื่อจัดการข้อมูลราคา
+    total_price = 0
+    updated_cart_items = []
 
     for item in cart_items:
-        # ค้นหาโปรโมชันที่ยังใช้งานได้ (ช่วงเวลาโปรโมชัน)
         promo = Promotion.objects.filter(
             is_active=True, 
             start_time__lte=now(), 
@@ -635,19 +586,22 @@ def cart_view(request):
             promotion_menus__menu=item.menu
         ).first()
 
+        original_price = item.menu.price
+
         if promo:
             if promo.discount_type == "percentage":
                 discounted_price = item.menu.price * (1 - (promo.discount_value / 100))
-            else:  # fixed price discount
+            else:
                 discounted_price = max(0, item.menu.price - promo.discount_value)
         else:
             discounted_price = item.menu.price
 
-        item.discounted_price = discounted_price  # เพิ่ม field ราคาหลังลด
-        item.total_price = discounted_price * item.quantity  # คำนวณรวมราคาหลังลด
+        item.original_price = original_price
+        item.discounted_price = discounted_price
+        item.total_price = discounted_price * item.quantity
 
-        total_price += item.total_price  # เพิ่มเข้า total price
-        updated_cart_items.append(item)  # เพิ่ม item ที่อัปเดตแล้วเข้า list
+        total_price += item.total_price
+        updated_cart_items.append(item)
 
     context = {
         "cart_items": updated_cart_items,
@@ -687,8 +641,7 @@ def update_cart_item(request, item_id):
 
     return JsonResponse({"success": False, "error": "Invalid request method"})
 
-def order_success_view(request, order_id):
-    return render(request, 'order_success.html', {'order_id': order_id})
+
 
 
 @staff_member_required
@@ -709,6 +662,10 @@ def table_management_view(request):
             y = 100 + radius * math.sin(angle_rad)
             chairs.append({'x': x, 'y': y})
 
+        # 🔹 ไม่ต้องเพิ่ม 20 ที่ y_position
+        x_position = table.x_position if table.x_position is not None else 0
+        y_position = table.y_position if table.y_position is not None else 0
+
         table_data.append({
             'table_id': table.id,
             'table_name': table.table_name,
@@ -716,8 +673,8 @@ def table_management_view(request):
             'table_status': table.table_status,
             'zone': table.zone.name if table.zone else "ไม่ระบุโซน",
             'chairs': chairs,
-            'x_position': table.x_position,  # ✅ ส่งค่า x
-            'y_position': table.y_position,  # ✅ ส่งค่า y
+            'x_position': x_position,  # ✅ ค่าที่ได้จาก DB ตรง ๆ
+            'y_position': y_position,  # ✅ ค่าที่ได้จาก DB ตรง ๆ
         })
 
     return render(request, 'owner/table_management.html', {
@@ -731,19 +688,37 @@ def update_table_position_view(request):
     if request.method == "POST":
         try:
             data = json.loads(request.body)
-            table_id = data.get("table_id")
-            new_x = data.get("x_position")
-            new_y = data.get("y_position")
+            tables = data.get("tables", [])
 
-            table = Table.objects.get(id=table_id)
-            table.x_position = new_x
-            table.y_position = new_y
-            table.save()
+            if tables:
+                for table_data in tables:
+                    table_id = table_data.get("tableId")
+                    new_x = table_data.get("x_position")
+                    new_y = table_data.get("y_position")
 
-            return JsonResponse({"success": True, "message": "ตำแหน่งโต๊ะอัปเดตเรียบร้อยแล้ว"})
-        except Table.DoesNotExist:
-            return JsonResponse({"success": False, "message": "ไม่พบโต๊ะนี้"}, status=404)
+                    if table_id is None or new_x is None or new_y is None:
+                        continue
+
+                    new_x = float(new_x)
+                    new_y = float(new_y)
+
+                    try:
+                        table = Table.objects.get(id=table_id)
+                        table.x_position = new_x
+                        table.y_position = new_y
+                        table.save()
+                    except Table.DoesNotExist:
+                        continue
+
+                return JsonResponse({"success": True, "message": "ตำแหน่งโต๊ะอัปเดตเรียบร้อยแล้ว"})
+            else:
+                return JsonResponse({"success": True, "message": "ไม่มีข้อมูลการเปลี่ยนแปลงตำแหน่งโต๊ะ"})
+
+        except json.JSONDecodeError:
+            return JsonResponse({"success": False, "message": "JSON ไม่ถูกต้อง"}, status=400)
+
     return JsonResponse({"success": False, "message": "Method Not Allowed"}, status=405)
+
 
 @login_required
 @user_passes_test(is_staff, login_url='login')
@@ -752,6 +727,21 @@ def add_table_view(request):
         table_name = request.POST.get('table_name')
         seating_capacity = request.POST.get('seating_capacity')
         zone_id = request.POST.get('zone')  # รับค่าโซนจากฟอร์ม
+
+        errors = {}
+
+        # ตรวจสอบข้อมูล
+        if not table_name:
+            errors['table_name'] = "กรุณากรอกชื่อโต๊ะ"
+        if not seating_capacity:
+            errors['seating_capacity'] = "กรุณากรอกจำนวนที่นั่ง"
+        if not zone_id:
+            errors['zone'] = "กรุณาเลือกโซน"
+
+        # หากมีข้อผิดพลาดให้แสดงในฟอร์ม
+        if errors:
+            zones = Zone.objects.all()  # ดึงข้อมูลโซนทั้งหมดสำหรับ dropdown
+            return render(request, 'owner/add_table.html', {'zones': zones, 'errors': errors, 'table_name': table_name, 'seating_capacity': seating_capacity, 'zone_id': zone_id})
 
         # ตรวจสอบว่าโซนที่เลือกมีอยู่หรือไม่
         zone = Zone.objects.filter(id=zone_id).first()
@@ -766,6 +756,7 @@ def add_table_view(request):
 
     zones = Zone.objects.all()  # ดึงข้อมูลโซนทั้งหมดสำหรับ dropdown
     return render(request, 'owner/add_table.html', {'zones': zones})
+
 
 def manage_table_view(request, table_id):
     # ดึงข้อมูลโต๊ะตาม ID
@@ -833,63 +824,38 @@ def change_booking_status(request, booking_id):
     booking = get_object_or_404(Booking, id=booking_id)
 
     if request.method == "POST":
-        new_status = request.POST.get("status")  # ดึงค่าจาก hidden input
-        print(f"🔍 Debug: Booking ID {booking_id}, New Status: {new_status}")
+        new_status = request.POST.get("status")
 
         if new_status in ["occupied", "completed"]:
             booking.status = new_status
             booking.save()
-            print(f"✅ Debug: Booking ID {booking_id} status updated to '{new_status}'.")
 
-            # ✅ Debug ค่าที่เกี่ยวข้องกับโต๊ะ
             table = booking.table
-            print(f"🔍 Debug: Table Name: {table.table_name}, Current Table Status: {table.table_status}")
 
-            # ✅ อัปเดตสถานะโต๊ะ
             if new_status == "occupied" and table.table_status != "occupied":
                 table.table_status = "occupied"
                 table.save()
-                print(f"✅ Debug: Table {table.table_name} status updated to 'occupied'.")
 
             elif new_status == "completed" and table.table_status != "available":
                 table.table_status = "available"
                 table.save()
-                print(f"✅ Debug: Table {table.table_name} status updated to 'available'.")
 
-            # ✅ แปลง `booking_start` เป็น Timezone ปัจจุบัน
             booking_start = make_aware(datetime.combine(booking.booking_date, booking.booking_time))
-            print(f"🔍 Debug: Computed Booking Start Time: {booking_start}")
 
-            # ✅ ค้นหา Order ใหม่ (ใช้ช่วงเวลาแบบเดิม)
             related_orders = Order.objects.filter(
                 user=booking.user,
                 table_name=table.table_name,
                 booking_start__range=[booking_start - timedelta(seconds=2), booking_start + timedelta(seconds=2)]
             )
-            print(f"🔍 Debug: Query -> {related_orders.query}")  # พิมพ์ Query ที่ Django ใช้จริง
 
-            # ✅ ตรวจสอบและอัปเดต Order
             if related_orders.exists():
                 for order in related_orders:
-                    print(f"🔍 Debug: Checking Order ID {order.id}, Current Status: {order.status}")
-
                     if new_status == "occupied" and order.status == "pending":
                         order.status = "in_progress"
                         order.save()
-                        print(f"✅ Debug: Order ID {order.id} status updated to 'in_progress'.")
-
                     elif new_status == "completed" and order.status != "completed":
                         order.status = "completed"
                         order.save()
-                        print(f"✅ Debug: Order ID {order.id} status updated to 'completed'.")
-            else:
-                print(f"⚠️ Debug: No related orders found for Booking ID {booking_id}")
-                print(f"🔍 Debug Fields - User: {booking.user.id}, Table: {table.table_name}, Date: {booking.booking_date}")
-
-                # ✅ Debug: แสดงออเดอร์ทั้งหมดเพื่อตรวจสอบ
-                all_orders = Order.objects.all()
-                for order in all_orders:
-                    print(f"🧐 Debug: Order ID: {order.id}, User: {order.user.username}, Table: {order.table_name}, Start: {order.booking_start}")
 
     return redirect('booked_tables')
 
@@ -972,10 +938,20 @@ def add_menu_view(request):
     return render(request, 'owner/add_menu.html')
 
 def menu_management_view(request):
+    # ดึงข้อมูลทั้งหมดจาก Menu
     menus = Menu.objects.all()
-    for menu in menus:
-        print(menu.image)  # ตรวจสอบ URL รูปภาพ
-    return render(request, 'owner/menu_management.html', {'menus': menus})
+
+    # สร้าง Paginator เพื่อแบ่งหน้าละ 10 เมนู
+    paginator = Paginator(menus, 8)  # 10 เมนูต่อหน้า
+
+    # รับหมายเลขหน้าจาก request
+    page_number = request.GET.get('page')  # ใช้ GET parameter ที่ชื่อว่า 'page'
+
+    # ดึงเมนูในหน้าปัจจุบัน
+    page_obj = paginator.get_page(page_number)
+
+    # ส่งข้อมูลไปยัง template
+    return render(request, 'owner/menu_management.html', {'page_obj': page_obj})
 
 def edit_menu_view(request, menu_id):
     menu = get_object_or_404(Menu, id=menu_id)
@@ -1026,9 +1002,6 @@ def check_reservation(request):
 @login_required
 def confirm_orders(request):
     if request.method == "POST":
-        if not request.user.is_authenticated:
-            return JsonResponse({"success": False, "error": "กรุณาเข้าสู่ระบบก่อนทำการสั่งซื้อ"}, status=401)
-
         try:
             cart = Cart.objects.get(user=request.user, is_active=True)
         except Cart.DoesNotExist:
@@ -1037,27 +1010,29 @@ def confirm_orders(request):
         if not cart.table:
             return JsonResponse({"success": False, "error": "กรุณาจองโต๊ะก่อนทำการสั่งซื้อ"}, status=400)
 
-        # ดึง Booking ที่เกี่ยวข้อง
         try:
             booking = Booking.objects.get(user=request.user, table=cart.table, status="pending")
         except Booking.DoesNotExist:
             return JsonResponse({"success": False, "error": "ไม่พบการจองที่เกี่ยวข้อง"}, status=404)
 
-        # ใช้เวลา booking_start และ booking_end จาก Booking
         booking_start = make_aware(datetime.combine(booking.booking_date, booking.booking_time))
         booking_end = make_aware(datetime.combine(booking.booking_date, booking.booking_end_time))
 
-        total_price = 0  # รวมราคาหลังหักส่วนลด
-        order = Order.objects.create(
-            user=request.user,
-            table_name=cart.table.table_name,
-            booking_start=booking_start,
-            booking_end=booking_end,
-            total_price=0  # ตั้งค่าเริ่มต้น
-        )
+        order = Order.objects.filter(user=request.user, status="pending").first()
+
+        if order:
+            total_price = order.total_price
+        else:
+            order = Order.objects.create(
+                user=request.user,
+                table_name=cart.table.table_name,
+                booking_start=booking_start,
+                booking_end=booking_end,
+                total_price=0
+            )
+            total_price = 0
 
         for item in cart.items.all():
-            # ✅ ค้นหาโปรโมชันที่ใช้งานอยู่สำหรับเมนูนี้
             promo = Promotion.objects.filter(
                 is_active=True,
                 start_time__lte=now(),
@@ -1068,7 +1043,7 @@ def confirm_orders(request):
             if promo:
                 if promo.discount_type == "percentage":
                     discounted_price = item.menu.price * (1 - (promo.discount_value / 100))
-                else:  # fixed price discount
+                else:
                     discounted_price = max(0, item.menu.price - promo.discount_value)
             else:
                 discounted_price = item.menu.price
@@ -1076,62 +1051,77 @@ def confirm_orders(request):
             total_item_price = discounted_price * item.quantity
             total_price += total_item_price
 
-            # ✅ บันทึกราคาหลังลดลง OrderItem
-            OrderItem.objects.create(
-                order=order,
-                menu=item.menu,  # แก้ไขให้เป็น menu แทน food_name
-                price=discounted_price,  # ✅ ใช้ราคาหลังลด
-                quantity=item.quantity
-            )
+            order_item = OrderItem.objects.filter(order=order, menu=item.menu).first()
 
-        # ✅ อัปเดตราคารวมของ Order
+            if order_item:
+                order_item.quantity += item.quantity
+                order_item.price = discounted_price
+                order_item.save()
+            else:
+                OrderItem.objects.create(
+                    order=order,
+                    menu=item.menu,
+                    price=discounted_price,
+                    quantity=item.quantity
+                )
+
+            try:
+                item.delete()
+            except Exception as e:
+                return JsonResponse({"success": False, "error": str(e)}, status=400)
+
         order.total_price = total_price
         order.save()
 
-        # ✅ ล้างตะกร้าหลังจากยืนยันการสั่งซื้อ
-        cart.is_active = False
-        cart.items.all().delete()
-        cart.save()
+        return JsonResponse({"success": True, "message": "การสั่งซื้อสำเร็จ!", "redirect_url": '/order-summary/'})
 
-        return JsonResponse({"success": True, "order_id": order.id, "message": "การสั่งซื้อสำเร็จ"})
 
-    return JsonResponse({"success": False, "error": "Invalid request method"}, status=405)
+
+
+
 
 
 @login_required(login_url='login')
 def order_summary(request):
     # ✅ ดึงเฉพาะคำสั่งซื้อที่ยังไม่ถูกยกเลิก
-    orders = Order.objects.filter(user=request.user).exclude(status="cancelled").order_by('-created_at')
+    orders_list = Order.objects.filter(user=request.user).exclude(status="cancelled").order_by('-created_at')
+
+    # ✅ ตั้งค่า Paginator ให้แสดง 10 ออเดอร์ต่อหน้า
+    paginator = Paginator(orders_list, 10)  # แสดง 10 รายการต่อหน้า
+    page_number = request.GET.get('page')  # ดึงหมายเลขหน้าจาก URL
+    orders = paginator.get_page(page_number)  # ดึงออเดอร์ของหน้านั้นๆ
 
     context = {
         "orders": orders,
     }
     return render(request, "order_summary.html", context)
 
-@never_cache  # ✅ ป้องกันแคช ทำให้หน้าโหลดข้อมูลใหม่ทุกครั้ง
+@never_cache
 @login_required(login_url='login')
 def order_management(request):
-    # ✅ กรองคำสั่งซื้อที่ไม่ถูกยกเลิกออก
-    orders = Order.objects.prefetch_related('items').exclude(status="cancelled").order_by('-created_at')
+    orders_list = Order.objects.prefetch_related('items').exclude(status="cancelled").order_by('-created_at')
 
-    # Mapping Order กับ Booking
-    for order in orders:
-        related_booking = Booking.objects.filter(
-            table__table_name=order.table_name,
-            user=order.user,
-            booking_date=order.booking_start.date()
-        ).first()
+    for order in orders_list:
         
-        if related_booking:
-            # ✅ ใช้ refresh_from_db() ให้แน่ใจว่าได้ข้อมูลล่าสุด
-            related_booking.refresh_from_db()
-            order.booking_time = related_booking.booking_time
-            order.booking_date = related_booking.booking_date
+        if order.booking_start:
+            order.booking_start_local = localtime(order.booking_start)
+            order.booking_date = order.booking_start_local.date()
+            order.booking_time = order.booking_start_local.time()
+        else:
+            order.booking_date = None
+            order.booking_time = None
 
-    context = {
-        "orders": orders,
-    }
-    return render(request, "owner/order_management.html", context)
+    paginator = Paginator(orders_list, 10)
+    page = request.GET.get('page')
+
+    try:
+        orders = paginator.page(page)
+    except PageNotAnInteger:
+        orders = paginator.page(1)
+    except EmptyPage:
+        orders = paginator.page(paginator.num_pages)
+
+    return render(request, "owner/order_management.html", {"orders": orders})
 
 @login_required
 def update_order_status(request, order_id, new_status):
@@ -1143,6 +1133,10 @@ def update_order_status(request, order_id, new_status):
         order.status = new_status
         order.save()
         messages.success(request, f"สถานะออเดอร์ ID {order_id} เปลี่ยนเป็น '{dict(Order.STATUS_CHOICES).get(new_status)}'")
+
+        # ✅ ถ้าออเดอร์สำเร็จ ("completed") ให้ลบ Cart ของผู้ใช้งาน
+        if new_status == "completed":
+            Cart.objects.filter(user=order.user).delete()
     else:
         messages.error(request, "สถานะที่ระบุไม่ถูกต้อง")
 
@@ -1160,7 +1154,9 @@ def promotion_list(request):
         "promotion_menus": promotion_menus
     })
 
-def add_promotion(request): 
+@login_required
+@user_passes_test(is_staff, login_url='login')
+def add_promotion(request):
     if request.method == "POST":
         data = request.POST
         promo_name = data.get("promo_name")
@@ -1170,15 +1166,20 @@ def add_promotion(request):
         end_time = data.get("end_time")
         selected_menus = request.POST.getlist("selected_menus")
 
-        # ✅ ตรวจสอบว่าเมนูมีโปรโมชันอยู่แล้วหรือไม่
+        # ตรวจสอบว่าโปรโมชันที่มีชื่อเดียวกันมีอยู่แล้วหรือไม่
+        if Promotion.objects.filter(name=promo_name).exists():
+            messages.error(request, f"❌ โปรโมชันชื่อ '{promo_name}' นี้มีอยู่แล้วในระบบ!")
+            return redirect("add_promotion")  # Redirect กลับไปหน้าฟอร์ม
+
+        # ตรวจสอบว่าเมนูมีโปรโมชันอยู่แล้วหรือไม่
         existing_promos = PromotionMenu.objects.filter(menu_id__in=selected_menus).select_related("menu")
         existing_menu_names = [promo.menu.food_name for promo in existing_promos]
 
         if existing_menu_names:
             messages.error(request, f"❌ เมนู {', '.join(existing_menu_names)} มีโปรโมชันอยู่แล้ว!")
-            return redirect("add_promotion")  # ✅ Redirect กลับไปหน้าฟอร์ม
+            return redirect("add_promotion")  # Redirect กลับไปหน้าฟอร์ม
 
-        # ✅ สร้างโปรโมชันใหม่
+        # สร้างโปรโมชันใหม่
         promotion = Promotion.objects.create(
             name=promo_name,
             discount_type=discount_type,
@@ -1188,13 +1189,13 @@ def add_promotion(request):
             is_active=True
         )
 
-        # ✅ เพิ่มเมนูที่เลือกเข้าไปใน `PromotionMenu`
+        # เพิ่มเมนูที่เลือกเข้าไปใน `PromotionMenu`
         for menu_id in selected_menus:
             menu = Menu.objects.get(id=menu_id)
             PromotionMenu.objects.create(promotion=promotion, menu=menu)
 
         messages.success(request, "✅ เพิ่มโปรโมชันสำเร็จ!")
-        return redirect("promotion_list")  # ✅ Redirect ไปหน้าโปรโมชัน
+        return redirect("add_promotion")  # Redirect ไปหน้าโปรโมชัน
 
     categories = Category.objects.all()
     return render(request, "owner/add_promotion.html", {"categories": categories})
@@ -1229,27 +1230,20 @@ def edit_promotion(request, promo_id):
     if request.method == "POST":
         try:
             data = json.loads(request.body)
-            
-            # ✅ Debug: แสดงค่าก่อนอัปเดต
-            print(f"🔍 Before Update -> Name: {promo.name}, Type: {promo.discount_type}, Value: {promo.discount_value}")
 
             promo.name = data.get("name", promo.name)
             promo.discount_value = data.get("discount_value", promo.discount_value)
             promo.start_time = data.get("start_time", promo.start_time)
             promo.end_time = data.get("end_time", promo.end_time)
 
-            # ✅ อัปเดต discount_type
             new_discount_type = data.get("discount_type", promo.discount_type)
             if new_discount_type in ["percentage", "fixed"]:
                 promo.discount_type = new_discount_type
 
             promo.save()
 
-            # ✅ Debug: แสดงค่าหลังอัปเดต
-            print(f"✅ After Update -> Name: {promo.name}, Type: {promo.discount_type}, Value: {promo.discount_value}")
-
             return JsonResponse({"success": True, "message": "อัปเดตโปรโมชันเรียบร้อย!"})
-        
+
         except Exception as e:
             return JsonResponse({"success": False, "message": str(e)}, status=400)
 
@@ -1258,10 +1252,13 @@ def edit_promotion(request, promo_id):
 @csrf_exempt
 def delete_table(request, table_id):
     if request.method == "POST":
-        table = get_object_or_404(Table, id=table_id)
-        table.delete()
-        return JsonResponse({"success": True, "redirect_url": "/table-management/"})  # ✅ ส่ง URL ที่ต้อง redirect ไปให้ JavaScript
-
+        try:
+            table = Table.objects.get(id=table_id)
+            table_name = table.table_name  # ✅ ดึงชื่อโต๊ะก่อนลบ
+            table.delete()
+            return JsonResponse({"success": True, "message": f"ลบโต๊ะ {table_name} สำเร็จ!", "redirect_url": "/table-management/"})
+        except Table.DoesNotExist:
+            return JsonResponse({"success": False, "message": "ไม่พบโต๊ะที่ต้องการลบ"}, status=404)
     return JsonResponse({"success": False, "message": "Method Not Allowed"}, status=405)
 
 
@@ -1332,12 +1329,6 @@ def sales_report_view(request):
     }
 
     return render(request, "owner/sales_report.html", context)
-
-from collections import defaultdict
-from datetime import datetime
-from django.shortcuts import render
-from django.utils.timezone import make_aware
-from .models import Order, OrderItem
 
 def monthly_sales_report_view(request):
     selected_month = request.GET.get("month", None)
@@ -1428,12 +1419,6 @@ def monthly_sales_report_view(request):
         "months_in_year": months_in_year,  # Pass the list of month names
     }
     return render(request, "owner/monthly_sales_report.html", context)
-
-
-
-
-
-
 
 def yearly_sales_report_view(request):
     selected_year = request.GET.get("year", None)

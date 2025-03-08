@@ -1,5 +1,3 @@
-{% load custom_filters %}
-
 <!DOCTYPE html>
 <html lang="en">
 
@@ -9,71 +7,10 @@
     <title>Booking</title>
     <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        // ฟังก์ชันเปิดป๊อปอัพแจ้งเตือน
-        function handleFormSubmit(event) {
-            event.preventDefault(); // ยกเลิกการส่งฟอร์มปกติ
-            const form = event.target;
-            const message = "การจองสำเร็จ!";
-            const success = true; // สถานะการจอง
-            const date = form.querySelector('[name="date"]').value;
-            const time = form.querySelector('[name="time"]').value;
-            const endTime = form.querySelector('[name="end_time"]').value;
-    
-            // ตรวจสอบว่ามีการเลือกวัน, เวลาเริ่มต้นและเวลาสิ้นสุดแล้วหรือไม่
-            if (!date || !time || !endTime) {
-                openPopup("กรุณาเลือกวันที่, เวลาเริ่มต้น และเวลาสิ้นสุด", false);
-                return; // ถ้ายังไม่ได้กรอกครบให้หยุดทำ
-            }
-    
-            openPopup(message, success); // เปิดป๊อปอัพเมื่อกรอกข้อมูลครบถ้วน
-    
-            // ส่งฟอร์มหลังจากแสดงป๊อปอัพเสร็จ
-            setTimeout(function() {
-                form.submit(); // ส่งฟอร์ม
-            }, 1000); // หน่วงเวลา 1 วินาทีหลังจากแสดงป๊อปอัพ
-        }
-    
-        function openPopup(message, success) {
-            const popup = document.getElementById("popup");
-            const popupMessage = document.getElementById("popupMessage");
-            const popupSuccess = document.getElementById("popupSuccess");
-            popupMessage.textContent = message;
-            popupSuccess.textContent = success ? "สำเร็จ" : "ล้มเหลว";
-            popup.classList.remove("hidden");
-    
-            // เมื่อปิด popup ให้เปลี่ยนไปที่หน้า my_booking.html
-            const closeButton = popup.querySelector("button");
-            closeButton.onclick = function() {
-                closePopup();
-                setTimeout(() => { 
-                    window.location.href = "{% url 'my_bookings' %}"; // เปลี่ยนไปหน้า my_bookings
-                }, 500); // หน่วงเวลาให้ป๊อปอัพปิดก่อน
-            };
-        }
-    
-        function closePopup() {
-            document.getElementById("popup").classList.add("hidden");
-        }
-    </script>
-    
 </head>
 
 <body class="bg-gray-100">
     {% include 'user_nav.html' %}
-
-    <!-- Popup -->
-    <div id="popup" class="hidden fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50">
-        <div class="bg-white p-12 rounded-2xl shadow-2xl text-center max-w-3xl transform transition-all duration-300 scale-95 hover:scale-100">
-            <h2 class="text-3xl font-bold mb-6 text-red-600" id="popupSuccess">⚠️ ข้อความสำคัญ</h2>
-            <p class="text-gray-700 mb-8 text-xl" id="popupMessage">กรุณาทำการกรอกข้อมูลให้ครบถ้วน</p>
-            <button onclick="closePopup()" class="px-8 py-4 bg-blue-500 text-white font-semibold rounded-2xl hover:bg-blue-600 transition duration-300 transform hover:scale-105">
-                ปิด
-            </button>
-        </div>
-    </div>
-    
-    
 
     <div class="max-w-3xl mx-auto mt-10 bg-white p-6 rounded shadow-lg">
         <a href="{% url 'table_status' %}" class="flex items-center text-blue-500 hover:underline">
@@ -85,26 +22,164 @@
         <h1 class="text-2xl font-bold mb-6">จองโต๊ะ: {{ table_name }}</h1>
         <p class="text-lg mb-4 text-gray-700">จำนวนที่นั่ง: {{ seating_capacity }} คน</p>
 
-        {% if error_message %}
-        <p class="text-red-500">{{ error_message }}</p>
-        {% endif %}
-
-        <p class="text-md text-gray-700 mb-4"><strong>วันที่ที่เลือก:</strong> {{ selected_date }}</p>
-        <p class="text-md text-gray-700 mb-4"><strong>เวลาเริ่มต้น:</strong> {{ selected_time }}</p>
-
-        <form method="POST" onsubmit="handleFormSubmit(event)">
+        <!-- ฟอร์มเลือกวันที่ -->
+        <form method="POST">
             {% csrf_token %}
-            <input type="hidden" name="date" value="{{ selected_date }}">
-            <input type="hidden" name="time" value="{{ selected_time }}">
-        
-            <label for="end_time" class="text-gray-700 font-semibold">เวลาเสร็จสิ้น:</label>
-            <input type="time" name="end_time" id="end_time" value="{{ selected_end_time }}" class="border border-gray-300 p-2 rounded" required>
-        
-            <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded mt-4 hover:bg-blue-600">
-                ยืนยันการจอง
-            </button>
+
+            <label for="selectedDate" class="text-gray-700 font-semibold">วันที่:</label>
+            <input type="date" name="date" id="selectedDate" class="border border-gray-300 p-2 rounded w-full" required value="{{ selected_date|default:'' }}">
+
+            <!-- ช่วงเวลาที่มีการจองแล้ว -->
+            {% if selected_date %}
+            <h3 class="text-md font-semibold text-gray-700 mt-4">ช่วงเวลาที่มีการจองแล้ว:</h3>
+            <table class="border-collapse border border-gray-300 w-full mt-2">
+                <thead>
+                    <tr class="bg-gray-200">
+                        <th class="border border-gray-300 px-4 py-2">เวลาเริ่ม</th>
+                        <th class="border border-gray-300 px-4 py-2">เวลาสิ้นสุด</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for time in booked_times %}
+                    <tr>
+                        <td class="border border-gray-300 px-4 py-2">{{ time.booking_time|date:"H:i" }}</td>
+                        <td class="border border-gray-300 px-4 py-2">{{ time.booking_end_time|date:"H:i" }}</td>
+
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="2" class="text-center text-gray-500 border border-gray-300 px-4 py-2">
+                            ไม่มีการจองในวันนี้
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div class="mt-4">
+                <div class="flex justify-between">
+                    <span class="text-gray-700">หน้า {{ page_obj.number }} จาก {{ page_obj.paginator.num_pages }}</span>
+                    <div class="flex space-x-2">
+                        {% if page_obj.has_previous %}
+                        <a href="?page=1" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">หน้าหลัก</a>
+                        <a href="?page={{ page_obj.previous_page_number }}" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">ก่อนหน้า</a>
+                        {% endif %}
+                        {% if page_obj.has_next %}
+                        <a href="?page={{ page_obj.next_page_number }}" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">ถัดไป</a>
+                        <a href="?page={{ page_obj.paginator.num_pages }}" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">หน้าสุดท้าย</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
         </form>
+
+        {% if selected_date %}
+    <!-- ฟอร์มเลือกเวลา -->
+            <form method="POST" class="mt-4" id="bookingForm">
+                {% csrf_token %}
+                <input type="hidden" name="date" value="{{ selected_date }}">
+
+                <!-- เวลาเริ่มต้น -->
+                <label for="selectedTime" class="text-gray-700 font-semibold">เวลาเริ่มต้น:</label>
+                <input type="time" name="booking_time" id="selectedTime" class="border border-gray-300 p-2 rounded w-full">
+                <p id="timeError" class="text-red-500 text-sm hidden">กรุณาเลือกเวลาเริ่มต้น</p>
+
+                <!-- เวลาเสร็จสิ้น -->
+                <label for="end_time" class="text-gray-700 font-semibold">เวลาเสร็จสิ้น:</label>
+                <input type="time" name="booking_end_time" id="end_time" class="border border-gray-300 p-2 rounded w-full">
+                <p id="endTimeError" class="text-red-500 text-sm hidden">กรุณาเลือกเวลาเสร็จสิ้น</p>
+
+                <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded mt-4 hover:bg-blue-600 w-full">
+                    ยืนยันการจอง
+                </button>
+            </form>
+        {% endif %}
     </div>
+
+    <script>
+        // ตั้งค่าวันที่ปัจจุบันให้กับฟิลด์วันที่
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('selectedDate').setAttribute('min', today);
+
+        // เพิ่มการจัดเก็บข้อมูลเวลาที่จองแล้วจาก server
+        const bookedTimes = [
+            {% for time in booked_times %}
+                { time: '{{ time.booking_time }}', endTime: '{{ time.booking_end_time }}' },
+            {% endfor %}
+        ];
+
+        document.getElementById('bookingForm').addEventListener('submit', function(event) {
+            var time = document.getElementById('selectedTime').value;
+            var endTime = document.getElementById('end_time').value;
+
+            // รีเซ็ตข้อความผิดพลาดก่อนหน้านี้
+            document.getElementById('timeError').classList.add('hidden');
+            document.getElementById('endTimeError').classList.add('hidden');
+
+            var valid = true;
+            var timeConflict = false;
+
+            // ถ้าเวลาเริ่มต้นไม่ได้เลือก
+            if (!time) {
+                document.getElementById('timeError').classList.remove('hidden');
+                valid = false;
+            }
+
+            // ถ้าเวลาเสร็จสิ้นไม่ได้เลือก
+            if (!endTime) {
+                document.getElementById('endTimeError').classList.remove('hidden');
+                valid = false;
+            }
+
+            // ตรวจสอบว่ามีการจองในเวลาที่เลือก
+           // ตรวจสอบว่ามีการจองทับซ้อนหรือไม่
+            bookedTimes.forEach(function(bookedTime) {
+                var bookedStart = bookedTime.time;
+                var bookedEnd = bookedTime.endTime;
+                
+                // ตรวจสอบว่าช่วงเวลาของการจองนี้ทับซ้อนกับการจองของผู้ใช้งานหรือไม่
+                if ((time >= bookedStart && time < bookedEnd) || (endTime > bookedStart && endTime <= bookedEnd)) {
+                    timeConflict = true;
+                }
+            });
+
+
+            // ถ้ามีการจองในเวลาที่เลือกให้แสดง modal
+            if (timeConflict) {
+                event.preventDefault(); // ป้องกันการส่งฟอร์ม
+                openModal();  // เรียกใช้ฟังก์ชันเปิด modal
+            }
+
+            // ถ้าไม่กรอกข้อมูลครบถ้วน
+            if (!valid) {
+                event.preventDefault();  // ป้องกันการส่งฟอร์ม
+            }
+        });
+
+        // ฟังก์ชันเปิด modal
+        function openModal() {
+            document.getElementById('conflictModal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('conflictModal').classList.add('hidden');
+        }
+
+    </script>
+
+   
+    <div id="conflictModal" class="fixed inset-0 flex justify-center items-center bg-gray-900 bg-opacity-50 z-50 hidden">
+        <div class="bg-white p-6 rounded shadow-lg text-center"> <!-- ใช้ text-center สำหรับจัดตำแหน่งข้อความ -->
+            <h2 class="text-xl font-semibold text-red-500">เวลานี้มีผู้จองแล้ว</h2>
+            <p class="mt-4 text-gray-700">กรุณาเลือกเวลาอื่น</p>
+            <button onclick="closeModal()" class="bg-blue-500 text-white px-4 py-2 rounded mt-4 hover:bg-blue-600">
+                ปิด
+            </button>
+        </div>
+    </div>
+    
+    
+
 </body>
 
 </html>

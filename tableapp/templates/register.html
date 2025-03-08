@@ -8,48 +8,110 @@
     <!-- Google Font Chakra Petch -->
     <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
-        /* ใช้ฟอนต์ Chakra Petch ทั่วทั้งหน้า */
         body {
             font-family: 'Chakra Petch', sans-serif;
         }
+        .bg-gradient {
+            background: linear-gradient(to right, #f46b45, #eea849);
+        }
     </style>
 </head>
-<body class="bg-gray-100">
-    <div class="max-w-md mx-auto mt-10 bg-white p-8 rounded-lg shadow-lg">
-        <h1 class="text-2xl font-bold mb-4 text-center">Register</h1>
-        <form method="POST">
+<body class="bg-gradient flex items-center justify-center min-h-screen">
+    <div class="max-w-3xl w-full bg-white p-16 rounded-lg shadow-xl">
+        <h1 class="text-4xl font-bold mb-8 text-center text-gray-700">Register</h1>
+
+        <form id="registerForm" method="POST">
             {% csrf_token %}
-            <div class="mb-4">
-                <label for="username" class="block text-gray-700">Username</label>
-                <input type="text" id="username" name="username" class="w-full px-4 py-2 border rounded" required>
+            {% if errors.form %}
+            <div class="text-red-500 text-sm mb-2">{{ errors.form }}</div>
+            {% endif %}
+            
+            <!-- First Name & Last Name on the same row -->
+            <div class="flex gap-8 mb-8">
+                <div class="w-1/2">
+                    <label for="first_name" class="block text-gray-700 text-lg">First Name</label>
+                    <input type="text" id="first_name" name="first_name" value="{{ first_name|default:'' }}"
+                           class="w-full h-16 px-8 border rounded focus:outline-none focus:ring-2 focus:ring-orange-500 text-lg {% if errors.first_name %}border-red-500{% endif %}">
+                    <span id="firstNameError" class="text-red-500 text-sm mt-2 {% if errors.first_name %}block{% else %}hidden{% endif %}">
+                        {{ errors.first_name }}
+                    </span>
+                </div>
+
+                <div class="w-1/2">
+                    <label for="last_name" class="block text-gray-700 text-lg">Last Name</label>
+                    <input type="text" id="last_name" name="last_name" value="{{ last_name|default:'' }}"
+                           class="w-full h-16 px-8 border rounded focus:outline-none focus:ring-2 focus:ring-orange-500 text-lg {% if errors.last_name %}border-red-500{% endif %}">
+                    <span id="lastNameError" class="text-red-500 text-sm mt-2 {% if errors.last_name %}block{% else %}hidden{% endif %}">
+                        {{ errors.last_name }}
+                    </span>
+                </div>
             </div>
-            <div class="mb-4">
-                <label for="email" class="block text-gray-700">Email</label>
-                <input type="email" id="email" name="email" class="w-full px-4 py-2 border rounded" required>
+
+            <!-- Username & Email -->
+            <div class="grid grid-cols-1 gap-8 mb-8">
+                <div>
+                    <label for="username" class="block text-gray-700 text-lg">Username</label>
+                    <input type="text" id="username" name="username" value="{{ username|default:'' }}"
+                           class="w-full h-16 px-8 border rounded focus:outline-none focus:ring-2 focus:ring-orange-500 text-lg {% if errors.username %}border-red-500{% endif %}">
+                    <span id="usernameError" class="text-red-500 text-sm mt-2 {% if errors.username %}block{% else %}hidden{% endif %}">
+                        {{ errors.username }}
+                    </span>
+                </div>
+
+                <div>
+                    <label for="email" class="block text-gray-700 text-lg">Email</label>
+                    <input type="email" id="email" name="email" value="{{ email|default:'' }}"
+                           class="w-full h-16 px-8 border rounded focus:outline-none focus:ring-2 focus:ring-orange-500 text-lg {% if errors.email %}border-red-500{% endif %}">
+                    <span id="emailError" class="text-red-500 text-sm mt-2 {% if errors.email %}block{% else %}hidden{% endif %}">
+                        {{ errors.email }}
+                    </span>
+                </div>
             </div>
-            <div class="mb-4">
-                <label for="first_name" class="block text-gray-700">First Name</label>
-                <input type="text" id="first_name" name="first_name" class="w-full px-4 py-2 border rounded" required>
+
+            <!-- Password & Confirm Password -->
+            <div class="grid grid-cols-1 gap-8 mb-8">
+                <div>
+                    <label for="password" class="block text-gray-700 text-lg">Password</label>
+                    <input type="password" id="password" name="password"
+                           class="w-full h-16 px-8 border rounded focus:outline-none focus:ring-2 focus:ring-orange-500 text-lg">
+                </div>
+
+                <div>
+                    <label for="confirm_password" class="block text-gray-700 text-lg">Confirm Password</label>
+                    <input type="password" id="confirm_password" name="confirm_password"
+                           class="w-full h-16 px-8 border rounded focus:outline-none focus:ring-2 focus:ring-orange-500 text-lg {% if errors.confirm_password %}border-red-500{% endif %}">
+                    <span id="confirmPasswordError" class="text-red-500 text-sm mt-2 {% if errors.confirm_password %}block{% else %}hidden{% endif %}">
+                        {{ errors.confirm_password }}
+                    </span>
+                </div>
             </div>
-            <div class="mb-4">
-                <label for="last_name" class="block text-gray-700">Last Name</label>
-                <input type="text" id="last_name" name="last_name" class="w-full px-4 py-2 border rounded" required>
-            </div>
-            <div class="mb-4">
-                <label for="password" class="block text-gray-700">Password</label>
-                <input type="password" id="password" name="password" class="w-full px-4 py-2 border rounded" required>
-            </div>
-            <div class="mb-4">
-                <label for="confirm_password" class="block text-gray-700">Confirm Password</label>
-                <input type="password" id="confirm_password" name="confirm_password" class="w-full px-4 py-2 border rounded" required>
-            </div>
-            <button type="submit" class="w-full bg-blue-500 text-white py-2 px-4 rounded">
+
+            <button type="submit" class="w-full bg-orange-500 text-white py-4 px-8 rounded hover:bg-orange-600 focus:outline-none text-xl">
                 Register
             </button>
         </form>
-        <p class="text-center mt-4">
-            Already have an account? <a href="/login/" class="text-blue-500">Login</a>
+
+        <p class="text-center mt-6 text-lg">
+            Already have an account? <a href="/login/" class="text-orange-500 hover:underline">Login</a>
         </p>
     </div>
+    <div id="successModal" class="fixed inset-0 bg-gray-800 bg-opacity-50 hidden flex items-center justify-center">
+        <div class="bg-white p-6 rounded-lg shadow-lg max-w-sm text-center">
+            <h2 class="text-xl font-bold text-green-600">สมัครสมาชิกสำเร็จ</h2>
+            <p id="successMessage" class="mt-2 text-gray-700"></p>
+            <a href="/login/" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded block w-full">เข้าสู่ระบบ</a>
+        </div>
+    </div>
+
+    <script>
+        // แสดง Modal ถ้าสมัครสำเร็จ
+        window.onload = function() {
+            let successMessage = "{{ success|default:'' }}";
+            if (successMessage) {
+                document.getElementById("successMessage").textContent = successMessage;
+                document.getElementById("successModal").classList.remove("hidden");
+            }
+        };
+    </script>
 </body>
 </html>

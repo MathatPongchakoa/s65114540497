@@ -6,7 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>เพิ่มโปรโมชัน</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script> <!-- ✅ ใช้ jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
     <style>
         body {
             font-family: 'Chakra Petch', sans-serif;
@@ -48,7 +49,6 @@
                 <input type="datetime-local" name="end_time" id="end_time" class="w-full border border-gray-300 rounded px-4 py-2">
             </div>
 
-            <!-- ✅ เลือกหมวดหมู่ก่อน -->
             <div class="mb-4">
                 <label for="category" class="block text-gray-700 font-bold mb-2">เลือกหมวดหมู่:</label>
                 <select name="category" id="category" class="w-full border border-gray-300 rounded px-4 py-2">
@@ -59,7 +59,6 @@
                 </select>
             </div>
 
-            <!-- ✅ แสดงรายการเมนูตามหมวดหมู่ พร้อมปุ่ม "เลือกทั้งหมด" -->
             <div class="mb-4">
                 <label class="block text-gray-700 font-bold mb-2">เลือกเมนูที่ลดราคา:</label>
                 <div id="menu-list" class="border border-gray-300 rounded px-4 py-2 max-h-48 overflow-y-auto">
@@ -68,101 +67,101 @@
             </div>
 
             <div class="text-center mt-6">
-                <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">บันทึกโปรโมชัน</button>
+                <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600" id="savePromotionBtn">บันทึกโปรโมชัน</button>
                 <a href="{% url 'promotion_list' %}" class="ml-4 text-blue-500 hover:underline">ย้อนกลับ</a>
             </div>
         </form>
     </div>
-    <!-- ✅ Popup แจ้งเตือนเมื่อมีเมนูที่มีโปรโมชันอยู่แล้ว -->
-        <div id="error-popup" class="popup fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 hidden">
-            <div class="bg-white p-6 rounded-lg shadow-lg text-center">
-                <h2 class="text-lg font-bold text-red-600">เกิดข้อผิดพลาด</h2>
-                <p id="error-popup-message" class="text-gray-700 mt-2"></p>
-                <button class="close-popup mt-4 px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">ปิด</button>
-            </div>
-        </div>
 
-        <!-- ✅ Popup แจ้งเตือนเมื่อเพิ่มโปรโมชันสำเร็จ -->
-        <div id="success-popup" class="popup fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 hidden">
-            <div class="bg-white p-6 rounded-lg shadow-lg text-center">
-                <h2 class="text-lg font-bold text-green-600">เพิ่มโปรโมชั่นสำเร็จ!</h2>
-                <p id="success-popup-message" class="text-gray-700 mt-2"></p>
-            </div>
-        </div>
+    <script>
+        $(document).ready(function() {
+            $("#category").change(function() {
+                let categoryId = $(this).val();
+                if (categoryId) {
+                    $.ajax({
+                        url: "{% url 'get_menus_by_category' %}",
+                        type: "GET",
+                        data: { category_id: categoryId },
+                        success: function(data) {
+                            let menuList = $("#menu-list");
+                            menuList.empty();
+                            if (data.menus.length > 0) {
+                                menuList.append(`
+                                    <div class="mb-2">
+                                        <input type="checkbox" id="select-all" class="mr-2">
+                                        <label for="select-all" class="font-bold">เลือกทั้งหมด</label>
+                                    </div>
+                                `);
 
-
-        <script>
-            $(document).ready(function() {
-                $("#category").change(function() {
-                    let categoryId = $(this).val();
-                    if (categoryId) {
-                        $.ajax({
-                            url: "{% url 'get_menus_by_category' %}",
-                            type: "GET",
-                            data: { category_id: categoryId },
-                            success: function(data) {
-                                let menuList = $("#menu-list");
-                                menuList.empty();
-                                if (data.menus.length > 0) {
+                                data.menus.forEach(menu => {
                                     menuList.append(`
-                                        <div class="mb-2">
-                                            <input type="checkbox" id="select-all" class="mr-2">
-                                            <label for="select-all" class="font-bold">เลือกทั้งหมด</label>
+                                        <div>
+                                            <input type="checkbox" name="selected_menus" class="menu-checkbox" value="${menu.id}">
+                                            <label>${menu.food_name}</label>
                                         </div>
                                     `);
-                                    
-                                    data.menus.forEach(menu => {
-                                        menuList.append(`
-                                            <div>
-                                                <input type="checkbox" name="selected_menus" class="menu-checkbox" value="${menu.id}">
-                                                <label>${menu.food_name}</label>
-                                            </div>
-                                        `);
-                                    });
-        
-                                    $("#select-all").change(function() {
-                                        $(".menu-checkbox").prop("checked", $(this).prop("checked"));
-                                    });
-        
-                                    $(".menu-checkbox").change(function() {
-                                        if ($(".menu-checkbox:checked").length === $(".menu-checkbox").length) {
-                                            $("#select-all").prop("checked", true);
-                                        } else {
-                                            $("#select-all").prop("checked", false);
-                                        }
-                                    });
-        
-                                } else {
-                                    menuList.html('<p class="text-gray-500">ไม่มีเมนูในหมวดหมู่นี้</p>');
-                                }
+                                });
+
+                                $("#select-all").change(function() {
+                                    $(".menu-checkbox").prop("checked", $(this).prop("checked"));
+                                });
+
+                                $(".menu-checkbox").change(function() {
+                                    if ($(".menu-checkbox:checked").length === $(".menu-checkbox").length) {
+                                        $("#select-all").prop("checked", true);
+                                    } else {
+                                        $("#select-all").prop("checked", false);
+                                    }
+
+                                });
+
+                            } else {
+                                menuList.html('<p class="text-gray-500">ไม่มีเมนูในหมวดหมู่นี้</p>');
                             }
-                        });
-                    } else {
-                        $("#menu-list").html('<p class="text-gray-500">กรุณาเลือกหมวดหมู่ก่อน</p>');
-                    }
-                });
+                        }
+                    });
+                } else {
+                    $("#menu-list").html('<p class="text-gray-500">กรุณาเลือกหมวดหมู่ก่อน</p>');
+                }
             });
-        </script>
+        });
+
+        // เปิด Modal เมื่อมีข้อผิดพลาด
         
-        {% if messages %}
-        <div id="popup-container" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50">
-            <div class="bg-white p-6 rounded-lg shadow-lg text-center">
-                {% for message in messages %}
-                <h2 class="text-lg font-bold {% if message.tags == 'success' %}text-green-600{% else %}text-red-600{% endif %}">
-                    {{ message }}
-                </h2>
-                {% endfor %}
-                <button onclick="closePopup()" class="mt-4 px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">ปิด</button>
-            </div>
+    </script>
+
+    <!-- Modal -->
+    <div id="modal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 hidden">
+        <div class="bg-white p-6 rounded-lg shadow-lg text-center w-96">
+            <div id="modal-message" class="text-lg font-bold"></div>
+            <button onclick="closeModal()" class="mt-4 px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">ปิด</button>
         </div>
-        
-        <script>
-            function closePopup() {
-                document.getElementById("popup-container").style.display = "none";
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            {% if messages %}
+            // เปิด Modal เมื่อมีข้อความ success หรือ error
+            $("#modal").removeClass("hidden");
+            var messageContent = "";
+            {% for message in messages %}
+                messageContent += "{{ message }}<br>";
+            {% endfor %}
+            $("#modal-message").html(messageContent);
+            {% endif %}
+        });
+    
+        // ฟังก์ชันปิด Modal และ redirect ไปหน้า promotion_list หากข้อความเป็น success
+        function closeModal() {
+            document.getElementById("modal").classList.add("hidden"); // ซ่อน Modal
+    
+            // ตรวจสอบว่าในข้อความมีคำว่า "สำเร็จ" หรือไม่
+            var message = document.getElementById("modal-message").innerText;
+            if (message.includes("สำเร็จ")) {
+                window.location.href = "{% url 'promotion_list' %}"; // Redirect ไปหน้ารายการโปรโมชัน
             }
-            // ✅ ปิด Popup อัตโนมัติใน 3 วินาที
-            setTimeout(closePopup, 3000);
-        </script>
-        {% endif %}
+        }
+    </script>
+
 </body>
 </html>

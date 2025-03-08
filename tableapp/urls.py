@@ -7,7 +7,6 @@ from django.conf.urls.static import static
 urlpatterns = [
     path('booking/<str:table_name>/', booking_view, name='booking'),
     path('', table_status_view, name='table_status'),
-    path('success/', success_view, name='success'),
     path('login/', login_view, name='login'),
     path('logout/', logout_view, name='logout'),
     path('register/', register_view, name='register'),
@@ -17,8 +16,9 @@ urlpatterns = [
     path('confirm_booking/<int:booking_id>/', confirm_booking, name='confirm_booking'),
     path('cart/add/', add_to_cart, name='add_to_cart'),
     path('cart/', cart_view, name='cart'),
+    path('cart/confirm-order/', confirm_orders, name='confirm_order'),
     path('cart/update/<int:item_id>/', update_cart_item, name='update_cart_item'),
-    path('order/success/<int:order_id>/', order_success_view, name='order_success'),
+    path('order-summary/', order_summary, name='order_summary'),
 
     path('reset-password/', auth_views.PasswordResetView.as_view(template_name='password_reset.html'), name='reset_password'),
     path('reset-password-done/', auth_views.PasswordResetDoneView.as_view(template_name='password_reset_done.html'), name='password_reset_done'),
@@ -42,11 +42,11 @@ urlpatterns = [
 
     path('menu/<int:menu_id>/delete/', delete_menu, name='delete_menu'),
     path('cart/check-reservation/', check_reservation, name='check_reservation'),
-    path('cart/confirm-order/', confirm_orders, name='confirm_order'),
-    path('order-summary/', order_summary, name='order_summary'),
     path('order-management/', order_management, name='order_management'),
     path('order/update-status/<int:order_id>/<str:new_status>/', update_order_status, name='update_order_status'),
-    path("update-table-position/", update_table_position_view, name="update_table_position"),
+    path('update-table-position/', update_table_position_view, name='update_table_position'),
+
+
 
     path('add-promotion/', add_promotion, name='add_promotion'),  # ✅ Path สำหรับเพิ่มโปรโมชัน
     path('get-menus-by-category/', get_menus_by_category, name='get_menus_by_category'),  # ✅ ดึงเมนูตามหมวดหมู่
@@ -56,9 +56,9 @@ urlpatterns = [
     path("edit-promotion/<int:promo_id>/", edit_promotion, name="edit_promotion"),
     path('edit-table/<int:table_id>/', edit_table, name='edit_table'),
     path('table-management/delete/<int:table_id>/', delete_table, name='delete_table'),
-     path('sales-report/', sales_report_view, name='sales_report'),
-     path("monthly-sales-report/", monthly_sales_report_view, name="monthly_sales_report"),
-     path("yearly-sales-report/", yearly_sales_report_view, name="yearly_sales_report"),
+    path('sales-report/', sales_report_view, name='sales_report'),
+    path("monthly-sales-report/", monthly_sales_report_view, name="monthly_sales_report"),
+    path("yearly-sales-report/", yearly_sales_report_view, name="yearly_sales_report"),
     
 
     

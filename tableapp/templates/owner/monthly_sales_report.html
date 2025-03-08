@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 </head>
 
 <body class="bg-gray-100">
@@ -16,20 +17,27 @@
 
     <div class="max-w-5xl mx-auto mt-6 p-6 bg-white shadow-md rounded-lg">
         <h1 class="text-3xl font-bold text-center mb-6">📆 รายงานยอดขายรายเดือน</h1>
-        <div class="flex flex-col items-center space-y-4">
-            <label for="reportType" class="text-lg font-bold">📑 ประเภทการดูรายงาน</label>
-            <select id="reportType" class="border border-gray-300 p-2 rounded" onchange="changeReportType()">
-                <option value="daily" {% if report_type == "daily" %}selected{% endif %}>📅 รายวัน</option>
-                <option value="monthly" {% if report_type == "monthly" %}selected{% endif %}>📆 รายเดือน</option>
-                <option value="yearly" {% if report_type == "yearly" %}selected{% endif %}>📅 รายปี</option>
-            </select>
-        </div>
         
-        <div class="flex flex-col items-center space-y-4">
+        <!-- แบ่งกลุ่มปุ่มการเลือกประเภทการดูรายงาน -->
+        <div class="flex justify-center mt-6 space-x-4">
+            <button onclick="changeReportType('daily')" class="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all">
+                📅 รายวัน
+            </button>
+
+            <button onclick="changeReportType('monthly')" class="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all">
+                📆 รายเดือน
+            </button>
+
+            <button onclick="changeReportType('yearly')" class="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all">
+                📅 รายปี
+            </button>
+        </div>
+
+        <!-- ฟอร์มเลือกเดือนและปี -->
+        <div class="flex flex-col items-center space-y-4 mt-6">
             <h2 class="text-xl font-bold">📅 เลือกเดือนเพื่อดูยอดขาย</h2>
             <form method="GET" action="{% url 'monthly_sales_report' %}" class="flex space-x-4">
-                <!-- Dropdown เลือกเดือน -->
-                <select name="month" class="border border-gray-300 p-2 rounded">
+                <select name="month" class="border border-gray-300 p-2 rounded-lg">
                     {% for month in months %}
                     <option value="{{ month.0 }}" {% if selected_month == month.0 %}selected{% endif %}>
                         {{ month.1 }}
@@ -37,8 +45,7 @@
                     {% endfor %}
                 </select>
 
-                <!-- Dropdown เลือกปี -->
-                <select name="year" class="border border-gray-300 p-2 rounded">
+                <select name="year" class="border border-gray-300 p-2 rounded-lg">
                     {% for year in years %}
                     <option value="{{ year }}" {% if selected_year == year %}selected{% endif %}>
                         {{ year }}
@@ -46,14 +53,14 @@
                     {% endfor %}
                 </select>
 
-                <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                <button type="submit" class="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-all">
                     🔍 ดูยอดขาย
                 </button>
             </form>
         </div>
 
         {% if selected_month and selected_year %}
-        <h2 class="text-xl font-bold text-center mt-4 mb-4">
+        <h2 class="text-xl font-bold text-center mt-6 mb-6">
             📅 ยอดขายเดือน {{ selected_month_name }} {{ selected_year }}
         </h2>
 
@@ -62,7 +69,7 @@
             ✅ ยอดขายรวม: {{ total_sales|floatformat:2|intcomma }} บาท
         </div>
 
-        <!-- ✅ ตารางแสดงยอดขายตามเมนู -->
+        <!-- ตารางยอดขาย -->
         <div class="overflow-x-auto">
             <table class="w-full border-collapse border border-gray-300">
                 <thead>
@@ -90,7 +97,7 @@
             </table>
         </div>
 
-        <!-- Graph: เปรียบเทียบยอดขาย -->
+        <!-- กราฟยอดขาย -->
         <div class="w-full max-w-3xl mx-auto mb-6">
             <canvas id="salesChart"></canvas>
         </div>
@@ -106,12 +113,12 @@
     <script>
         var ctx = document.getElementById('salesChart').getContext('2d');
         var salesChart = new Chart(ctx, {
-            type: 'line',  // กราฟประเภทเส้น
+            type: 'line',  
             data: {
-                labels: {{ months_in_year|safe }},  // เดือน
+                labels: {{ months_in_year|safe }},
                 datasets: [{
                     label: 'ยอดขาย',
-                    data: {{ monthly_sales_data|safe }},  // ข้อมูลยอดขาย
+                    data: {{ monthly_sales_data|safe }},
                     borderColor: 'rgba(75, 192, 192, 1)',
                     backgroundColor: 'rgba(75, 192, 192, 0.2)',
                     fill: true,
@@ -128,13 +135,11 @@
             }
         });
     </script>
-    
-    
+
     <script>
-        function changeReportType() {
-            const reportType = document.getElementById("reportType").value;
+        function changeReportType(reportType) {
             let targetUrl = "";
-    
+
             if (reportType === "monthly") {
                 targetUrl = "{% url 'monthly_sales_report' %}";
             } else if (reportType === "yearly") {
@@ -142,8 +147,7 @@
             } else {
                 targetUrl = "{% url 'sales_report' %}";
             }
-    
-            // ✅ เปลี่ยนหน้าโดยไปยัง URL ที่กำหนด
+
             window.location.href = targetUrl;
         }
     </script>

@@ -9,6 +9,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+
 </head>
 
 <body class="bg-gray-100">
@@ -18,14 +20,20 @@
         <h1 class="text-3xl font-bold text-center mb-6">📊 รายงานยอดขาย</h1>
 
         <!-- ✅ Dropdown เลือกรายงาน -->
-        <div class="flex flex-col items-center space-y-4">
-            <label for="reportType" class="text-lg font-bold">📑 ประเภทการดูรายงาน</label>
-            <select id="reportType" class="border border-gray-300 p-2 rounded" onchange="changeReportType()">
-                <option value="daily" {% if report_type == "daily" %}selected{% endif %}>📅 รายวัน</option>
-                <option value="monthly" {% if report_type == "monthly" %}selected{% endif %}>📆 รายเดือน</option>
-                <option value="yearly" {% if report_type == "yearly" %}selected{% endif %}>📅 รายปี</option>
-            </select>
+        <div class="flex justify-center mt-6 space-x-4">
+            <button onclick="changeReportType('daily')" class="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all">
+                📅 รายวัน
+            </button>
+
+            <button onclick="changeReportType('monthly')" class="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all">
+                📆 รายเดือน
+            </button>
+
+            <button onclick="changeReportType('yearly')" class="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all">
+                📅 รายปี
+            </button>
         </div>
+        
 
         <!-- ✅ ฟอร์มเลือกวันที่ -->
         <div id="dailyReportForm" class="flex flex-col items-center space-y-4 mt-4">
@@ -90,10 +98,9 @@
     </div>
 
     <script>
-        function changeReportType() {
-            const reportType = document.getElementById("reportType").value;
+        function changeReportType(reportType) {
             let targetUrl = "";
-    
+
             if (reportType === "monthly") {
                 targetUrl = "{% url 'monthly_sales_report' %}";
             } else if (reportType === "yearly") {
@@ -101,10 +108,11 @@
             } else {
                 targetUrl = "{% url 'sales_report' %}";
             }
-    
-            // ✅ เปลี่ยนหน้าโดยไปยัง URL ที่กำหนด
+
+            // เปลี่ยนหน้าโดยไปยัง URL ที่กำหนด
             window.location.href = targetUrl;
         }
+
     
         // ข้อมูลกราฟที่ได้รับจาก Django
         const salesData = {

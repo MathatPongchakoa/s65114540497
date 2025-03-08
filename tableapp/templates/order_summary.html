@@ -1,3 +1,4 @@
+{% load humanize %}
 <!DOCTYPE html>
 <html lang="en">
 
@@ -43,7 +44,7 @@
                 <tr>
                     <td class="border border-gray-300 px-4 py-2 text-center">{{ order.id }}</td>
                     <td class="border border-gray-300 px-4 py-2 text-center">{{ order.table_name }}</td>
-                    <td class="border border-gray-300 px-4 py-2 text-right">{{ order.total_price|floatformat:2 }} บาท</td>
+                    <td class="border border-gray-300 px-4 py-2 text-right">{{ order.total_price|floatformat:2|intcomma }} บาท</td>
                     <td class="border border-gray-300 px-4 py-2 text-center">
                         <span class="px-2 py-1 rounded
                             {% if order.status == 'pending' %}bg-yellow-200 text-yellow-700 rounded-full{% endif %}
