@@ -2,8 +2,9 @@ Django
 pytz
 openpyxl
 mysqlclient
-django-browser-reload
-celery 
-redis
-django-celery-beat
+Django-browser-reload
+Celery 
+Redis
+Django-celery-beat
 Pillow
+Django_dbml

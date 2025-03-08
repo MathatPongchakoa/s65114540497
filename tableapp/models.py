@@ -8,7 +8,6 @@ from datetime import time
 from datetime import timedelta
 from django.utils.timezone import now
 from django.utils import timezone
-from background_task import background
 from django.db.models import Index
 
 # tableapp/models.py
