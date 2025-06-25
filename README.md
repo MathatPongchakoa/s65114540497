@@ -8,8 +8,9 @@ mysql -u root -p
 CREATE DATABASE sn_project CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;  
 
 python manage.py makemigrations  
-python manage.py migrate 
+python manage.py migrate  
 python manage.py runserver  
+
 
 
 
