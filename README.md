@@ -1,19 +1,14 @@
-65114540497
+python -m venv venv  
+.\venv\Scripts\Activate  
+pip install -r requirements.txt  
 
-นายเมธัส พงษ์ชะเกาะ
+### สร้างดาต้าเบส ###
 
-mathat.po.65@ubu.ac.th
+mysql -u root -p  
+CREATE DATABASE sn_project CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;  
 
-docker run --name redis-server -p 6379:6379 -d redis จากนั้นไปก็ไปกดรันที่ img
+python manage.py makemigrations  
+python manage.py migrate  
 
-รัน celery -A seniorproject worker --loglevel=info --pool=solo
-celery -A seniorproject beat --loglevel=info
-ก่อน runserver
-
-        สิ่งที่เพิ่มเข้ามาเพื่อนำเสนอวันที่ 16/1/2025
-
-        -พนักงาน เพิ่ม ลบ แก้ไขเมนูอาหารในร้านได้
-
-        -อัพเดตสคริปให้โหลดข้อมูลแล้วแสดงรูปภาพได้
 
 
