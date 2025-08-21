@@ -78,16 +78,29 @@ WSGI_APPLICATION = "seniorproject.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
+import os
+from dotenv import load_dotenv
+load_dotenv()
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
+DEBUG = os.getenv('DJANGO_DEBUG') == 'True'
+ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS').split(',')
 
-DATABASES = {   
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'sn_project',
-        'USER': 'root',
-        'PASSWORD': '1234',
-        'HOST': 'db',
-        'PORT': '3306',
-    }
+ALLOWED_HOSTS = [h.strip() for h in os.getenv("DJANGO_ALLOWED_HOSTS","").split(",") if h.strip()]
+
+CSRF_TRUSTED_ORIGINS = [
+    o.strip() for o in os.getenv("CSRF_TRUSTED_ORIGINS","").split(",") if o.strip()
+]
+
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+DATABASES = {
+  'default': {
+    'ENGINE': 'django.db.backends.postgresql',
+    'NAME': os.getenv('POSTGRES_DB'),
+    'USER': os.getenv('POSTGRES_USER'),
+    'PASSWORD': os.getenv('POSTGRES_PASSWORD'),
+    'HOST': os.getenv('POSTGRES_HOST', 'db'),  # <— ตรงนี้สำคัญ
+    'PORT': os.getenv('POSTGRES_PORT', '5432'),
+  }
 }
 
 

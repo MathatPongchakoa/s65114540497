@@ -1,24 +1,34 @@
 services:
+  db:
+    image: postgres:15-alpine
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB -h 127.0.0.1"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    ports:
+      - "20497:5432"
+
   web:
     build: .
+    restart: always
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    command: gunicorn seniorproject.wsgi:application --bind 0.0.0.0:8000 --access-logfile - --error-logfile - --log-level info
     ports:
-      - "8000:8000"  # นี่คือการกำหนดให้ container ภายในใช้พอร์ต 8000 และ expose ออกมาที่เครื่อง host บนพอร์ต 8000
+      - "10497:8000"    # <--- map ให้ user เข้า web โดยตรง
     volumes:
       - .:/app
-    depends_on:
-      - db
-    restart: always
-
-  db:
-    image: mysql:8.0
-    restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: 1234
-      MYSQL_DATABASE: sn_project
-    ports:
-      - "3307:3306"  # กำหนดให้ MySQL ใช้พอร์ต 3306 บน container และ expose ออกมาที่เครื่อง host บนพอร์ต 3307
-    volumes:
-      - mysql_data:/var/lib/mysql
+      - ./static:/app/static
+      - ./media:/app/media
 
 volumes:
-  mysql_data:
+  pgdata:

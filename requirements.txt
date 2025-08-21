@@ -1,10 +1,13 @@
 Django
 pytz
 openpyxl
-mysqlclient
+# mysqlclient
 Django-browser-reload
 Celery 
 Redis
 Django-celery-beat
 Pillow
 Django_dbml
+python-dotenv
+psycopg[binary]==3.2.*
+gunicorn==23.0.0
