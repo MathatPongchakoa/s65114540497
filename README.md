@@ -23,7 +23,7 @@
 git clone https://github.com/MathatPongchakoa/st_65114540497.git
 
 3. 📁 เข้าโฟลเดอร์โปรเจกต์
-cd st_65114540497
+cd s65114540497
 4. ⚙️ Run project ด้วย Docker Compose
 docker compose up -d --build
 5. 🌐 เข้าใช้งานระบบ
