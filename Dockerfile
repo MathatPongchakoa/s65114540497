@@ -12,4 +12,4 @@ RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]
 
 # คำสั่งเริ่มต้น (ยังแก้ได้จาก docker-compose ผ่าน 'command')
-CMD ["gunicorn","seniorproject.wsgi:application","--bind","0.0.0.0:8000"]
+CMD ["gunicorn","seniorproject.wsgi:application","--bind","0.0.0.0:10497"]
