@@ -15,20 +15,20 @@ services:
      
 
   web:
-    build: .
-    restart: always
-    env_file:
-      - .env
-    depends_on:
-      db:
-        condition: service_healthy
-    command: gunicorn seniorproject.wsgi:application --bind 0.0.0.0:8000 --access-logfile - --error-logfile - --log-level info
-    ports:
-      - "${PUBLIC_PORT}:8000"
-    volumes:
-      - .:/app
-      - ./static:/app/static
-      - ./media:/app/media
+      build: .
+      restart: always
+      env_file:
+        - .env
+      depends_on:
+        db:
+          condition: service_healthy
+      command: python manage.py runserver 0.0.0.0:8000
+      ports:
+        - "${PUBLIC_PORT}:8000"
+      volumes:
+        - ./app:/app
+        - ./static:/app/static
+        - ./media:/app/media
 
 volumes:
   pgdata:

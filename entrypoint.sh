@@ -38,5 +38,7 @@ User.objects.filter(username=u).exists() or User.objects.create_superuser(u, e, 
 print('done')
 "
 
+# run server
+python manage.py runserver 0.0.0.0:8080
 
 
