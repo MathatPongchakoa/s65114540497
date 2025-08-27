@@ -81,9 +81,21 @@ WSGI_APPLICATION = "seniorproject.wsgi.application"
 import os
 from dotenv import load_dotenv
 load_dotenv()
-SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
-DEBUG = os.getenv('DJANGO_DEBUG') == 'True'
-ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS').split(',')
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'unsafe-secret-key')
+DEBUG = os.getenv('DJANGO_DEBUG', 'False') == 'True'
+def _csv(v, default=""):
+    return [x.strip() for x in (v or default).split(",") if x.strip()]
+
+ALLOWED_HOSTS = _csv(os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,10.80.21.37"))
+
+
+_public_port = os.getenv("PUBLIC_PORT", "10497")
+_csrf = []
+for h in ALLOWED_HOSTS:
+    _csrf += [f"http://{h}", f"https://{h}"]
+    if _public_port:
+        _csrf += [f"http://{h}:{_public_port}", f"https://{h}:{_public_port}"]
+CSRF_TRUSTED_ORIGINS = _csrf
 
 
 
@@ -96,7 +108,7 @@ DATABASES = {
     'NAME': os.getenv('POSTGRES_DB'),
     'USER': os.getenv('POSTGRES_USER'),
     'PASSWORD': os.getenv('POSTGRES_PASSWORD'),
-    'HOST': os.getenv('POSTGRES_HOST', 'db'),  # <— ตรงนี้สำคัญ
+     'HOST': 'db',  # <— ตรงนี้สำคัญ
     'PORT': os.getenv('POSTGRES_PORT', '5432'),
   }
 }
