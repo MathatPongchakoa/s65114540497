@@ -24,7 +24,7 @@ services:
         condition: service_healthy
     command: gunicorn seniorproject.wsgi:application --bind 0.0.0.0:10497 --access-logfile - --error-logfile - --log-level info
     ports:
-      - "${APP_PORT}:${APP_PORT}"
+      - "${APP_PORT}:10497"
     volumes:
       - .:/app
       - ./static:/app/static
