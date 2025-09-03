@@ -39,6 +39,7 @@ print('done')
 "
 
 # run server
-python manage.py runserver 0.0.0.0:8080
+gunicorn --bind 0.0.0.0:8000 seniorproject.wsgi:application
+
 
 

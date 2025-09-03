@@ -20,11 +20,11 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    command: python manage.py runserver 0.0.0.0:8000
+    # command: python manage.py runserver 0.0.0.0:8000 <--- ลบบรรทัดนี้ออก
     ports:
       - "${PUBLIC_PORT}:8000"
     volumes:
-      - .:/app     # ✅ map โปรเจกต์ทั้งโฟลเดอร์เข้า /app
+      - .:/app
       - ./static:/app/static
       - ./media:/app/media
 
