@@ -32,20 +32,20 @@ services:
       # --- 1. Router ---
       # กำหนด Router ชื่อ seniorproject-router ให้ทำงานเมื่อ Host และ Path ตรงกัน
       # !! แก้ไข 's65114540497' เป็นรหัสนักศึกษาของคุณ !!
-      - "traefik.http.routers.seniorproject-router.rule=Host(`10.80.21.9`) && PathPrefix(`/mathat497`)"
-      - "traefik.http.routers.seniorproject-router.entrypoints=web"
+      - "traefik.http.routers.mathat497.rule=PathPrefix(`/mathat497`)"
+      - "traefik.http.routers.mathat497.entrypoints=web"
 
       # --- 2. Middleware (ตัวตัด Path) ---
       # สั่งให้ Router seniorproject-router ใช้ Middleware ชื่อ strip-prefix
-      - "traefik.http.routers.seniorproject-router.middlewares=strip-prefix"
+      - "traefik.http.routers.mathat497.middlewares=strip-prefix"
       # สร้าง Middleware ชื่อ strip-prefix ให้ทำหน้าที่ตัด Path ที่กำหนดทิ้งไป
       # !! แก้ไข 's65114540497' เป็นรหัสนักศึกษาของคุณ !!
       - "traefik.http.middlewares.strip-prefix.stripprefix.prefixes=/mathat497"
 
       # --- 3. Service (Port ปลายทาง) ---
       # กำหนดให้ Traefik ส่ง request ไปยัง service ชื่อ seniorproject-service ที่ Port 8000
-      - "traefik.http.services.seniorproject-service.loadbalancer.server.port=8000"
-      - "traefik.http.routers.seniorproject-router.service=seniorproject-service"
+      - "traefik.http.services.mathat497.loadbalancer.server.port=8000"
+      - "traefik.http.routers.mathat497.service=mathat497"
       
       # --- 4. Network ---
       # ระบุให้ Traefik ใช้ network นี้ในการสื่อสารกับ container
