@@ -6,6 +6,8 @@ services:
       - .env
     volumes:
       - pgdata:/var/lib/postgresql/data
+    networks:
+      - default
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB -h 127.0.0.1"]
       interval: 3s
@@ -13,29 +15,47 @@ services:
       retries: 20
 
   web:
-    build: . # <--- ชี้ไปที่โฟลเดอร์ปัจจุบันที่ไฟล์ docker-compose.yml อยู่ (ซึ่งต้องมี Dockerfile และ requirements.txt)
+    build: .
     restart: always
     env_file:
       - .env
     depends_on:
       db:
         condition: service_healthy
-    ports:
-      - "10497:8000" # <--- map port ไปยังเครื่อง host เพื่อให้ Nginx เข้าถึงได้
     volumes:
       - .:/app
-      - ./static:/app/static
-      - ./media:/app/media
+    networks:
+      - default
+      - traefik-public
+    labels:
+      - "traefik.enable=true"
+      # --- 1. Router ---
+      # กำหนด Router ชื่อ seniorproject-router ให้ทำงานเมื่อ Host และ Path ตรงกัน
+      # !! แก้ไข 's65114540497' เป็นรหัสนักศึกษาของคุณ !!
+      - "traefik.http.routers.seniorproject-router.rule=Host(`10.80.21.9`) && PathPrefix(`/mathat497`)"
+      - "traefik.http.routers.seniorproject-router.entrypoints=web"
 
-  nginx:
-    image: nginx:1.25.3-alpine
-    restart: always
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro # <--- path สัมพัทธ์ไปยังไฟล์ nginx.conf
-    ports:
-      - "80:80" # <--- map port ของ Nginx ไปยัง host
-    depends_on:
-      - web
+      # --- 2. Middleware (ตัวตัด Path) ---
+      # สั่งให้ Router seniorproject-router ใช้ Middleware ชื่อ strip-prefix
+      - "traefik.http.routers.seniorproject-router.middlewares=strip-prefix"
+      # สร้าง Middleware ชื่อ strip-prefix ให้ทำหน้าที่ตัด Path ที่กำหนดทิ้งไป
+      # !! แก้ไข 's65114540497' เป็นรหัสนักศึกษาของคุณ !!
+      - "traefik.http.middlewares.strip-prefix.stripprefix.prefixes=/mathat497"
+
+      # --- 3. Service (Port ปลายทาง) ---
+      # กำหนดให้ Traefik ส่ง request ไปยัง service ชื่อ seniorproject-service ที่ Port 8000
+      - "traefik.http.services.seniorproject-service.loadbalancer.server.port=8000"
+      - "traefik.http.routers.seniorproject-router.service=seniorproject-service"
+      
+      # --- 4. Network ---
+      # ระบุให้ Traefik ใช้ network นี้ในการสื่อสารกับ container
+      - "traefik.docker.network=traefik-public"
 
 volumes:
   pgdata:
+
+networks:
+  default:
+    driver: bridge
+  traefik-public:
+    external: true
