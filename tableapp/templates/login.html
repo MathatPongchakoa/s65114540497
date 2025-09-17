@@ -16,11 +16,10 @@
     </style>
 </head>
 <body class="bg-gradient flex items-center justify-center min-h-screen">
-    <!-- Increased size for form container and input fields -->
     <div class="max-w-xl w-full bg-white p-16 rounded-lg shadow-xl">
         <h1 class="text-4xl font-bold mb-8 text-center text-gray-700">Login</h1>
 
-        <form id="loginForm" method="POST">
+        <form id="loginForm" method="POST" action="{% url 'login' %}">
             {% csrf_token %}
             
             <div class="mb-8">
@@ -47,10 +46,10 @@
         </form>
 
         <p class="text-center mt-6 text-lg">
-            Don't have an account? <a href="/register/" class="text-orange-500 hover:underline">Register</a>
+            Don't have an account? <a href="{% url 'register' %}" class="text-orange-500 hover:underline">Register</a>
         </p>
         <p class="text-center mt-4 text-lg">
-            <a href="/reset-password/" class="text-orange-500 hover:underline">Forgot Password?</a>
+            <a href="{% url 'reset_password' %}" class="text-orange-500 hover:underline">Forgot Password?</a>
         </p>
     </div>
 

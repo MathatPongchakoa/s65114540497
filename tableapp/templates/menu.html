@@ -41,25 +41,25 @@
     <h1 class="text-center text-3xl font-bold mb-6 mt-6">เมนูอาหาร</h1>
 
     <div class="flex justify-center mb-6">
-        <a href="/menu/"
-           class="{% if category_name %}bg-yellow-300{% else %}bg-yellow-500{% endif %} text-black px-4 py-2 rounded mx-2 hover:bg-yellow-400">
+        <a href="{% url 'menu' %}"
+           class="{% if not category_name %}bg-yellow-300{% else %}bg-yellow-500{% endif %} text-black px-4 py-2 rounded mx-2 hover:bg-yellow-400">
             ทั้งหมด
         </a>
         {% for category in categories %}
-        <a href="/menu/?category={{ category.name }}" 
+        <a href="{% url 'menu' %}?category={{ category.name }}" 
            class="{% if category.name == category_name %}bg-yellow-300 hover:bg-yellow-300{% else %}bg-yellow-500 hover:bg-yellow-400{% endif %} text-black px-4 py-2 rounded mx-2">
             {{ category.name }}
         </a>
         {% endfor %}
-    </div>
-    <!-- แสดงข้อความถ้าไม่มีเมนู -->
-    {% if menus|length == 0 %}
+        </div>
+    
+    {% if not menus %}
     <p class="text-center text-red-500 text-lg font-semibold">
         ไม่มีเมนูในหมวด "{{ category_name }}"
     </p>
     {% endif %}
     
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-6 p-4">
         {% for item in menus %}
         <div class="menu-card border p-4 rounded-lg shadow bg-white group">
             <div class="overflow-hidden rounded">
@@ -77,9 +77,9 @@
                         </p>
                         <p class="text-xs text-green-500">
                             {% if item.promotion.discount_type == "percentage" %}
-                                ลด {{ item.promotion.discount_value }}%
+                                ลด {{ item.promotion.discount_value|floatformat:0 }}%
                             {% else %}
-                                ลด ฿{{ item.promotion.discount_value }}
+                                ลด ฿{{ item.promotion.discount_value|floatformat:2 }}
                             {% endif %}
                         </p>
                     {% else %}
@@ -96,7 +96,7 @@
                 </button>
                 {% else %}
                 <button disabled
-                    class="bg-gray-400 text-white rounded-full w-8 h-8 flex justify-center items-center cursor-not-allowed">
+                    class="bg-gray-400 text-white rounded-full w-8 h-8 flex justify-center items-center cursor-not-allowed" title="กรุณาจองโต๊ะก่อนสั่งอาหาร">
                     +
                 </button>
                 {% endif %}
@@ -105,9 +105,9 @@
         {% endfor %}
     </div>
     
-    <div class="mt-6 flex justify-center space-x-4">
+    <div class="mt-6 flex justify-center space-x-4 pb-6">
         {% if menus.has_previous %}
-        <a href="?page={{ menus.previous_page_number }}{% if category_name %}&category={{ category_name }}{% endif %}" 
+        <a href="{% url 'menu' %}?page={{ menus.previous_page_number }}{% if category_name %}&category={{ category_name }}{% endif %}" 
            class="px-3 py-2 border border-gray-300 rounded hover:bg-gray-200 flex items-center">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
@@ -121,7 +121,7 @@
         </span>
 
         {% if menus.has_next %}
-        <a href="?page={{ menus.next_page_number }}{% if category_name %}&category={{ category_name }}{% endif %}" 
+        <a href="{% url 'menu' %}?page={{ menus.next_page_number }}{% if category_name %}&category={{ category_name }}{% endif %}" 
            class="px-3 py-2 border border-gray-300 rounded hover:bg-gray-200 flex items-center">
             <span class="mr-1 hidden md:inline">Next</span>
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -129,22 +129,28 @@
             </svg>
         </a>
         {% endif %}
-    </div>
+        </div>
+    
     <script>
+        // --- ส่วนที่แก้ไข: สร้าง URL สำหรับ fetch ---
+        const addToCartUrl = "{% url 'add_to_cart' %}";
+        // --- จบส่วนแก้ไข ---
+
         function addToCart(foodId) {
             const formData = new FormData();
             formData.append('food_id', foodId);
     
-            fetch('/cart/add/', {
+            // --- ส่วนที่แก้ไข: ใช้ URL ที่สร้างไว้ ---
+            fetch(addToCartUrl, {
                 method: 'POST',
                 body: formData,
                 headers: {
                     'X-CSRFToken': '{{ csrf_token }}',
                 },
             })
+            // --- จบส่วนแก้ไข ---
             .then(response => response.json())
             .then(data => {
-                // Check if the response is successful
                 if (data.success) {
                     showPopup(`เพิ่ม ${data.food_name} ลงในตะกร้าแล้ว!`);
                 } else {
@@ -171,16 +177,13 @@
                 popup.classList.remove("bg-red-500");
             }
     
-            // Hide the popup after 3 seconds
             setTimeout(() => {
                 popup.classList.add("hidden");
             }, 3000);
         }
     </script>
     
-
-    <!-- Popup -->
-    <div id="popup" class="fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg hidden">
+    <div id="popup" class="fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg hidden z-50">
         <span id="popup-message"></span>
     </div>
 </body>

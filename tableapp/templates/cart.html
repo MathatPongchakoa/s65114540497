@@ -16,6 +16,15 @@
     </style>
 
     <script>
+        // --- ส่วนที่แก้ไข: กำหนด URL ด้วย Django Template Tag ---
+        // สร้าง URL พื้นฐานสำหรับ update, Django จะเติม prefix ให้อัตโนมัติ
+        const updateCartItemUrlBase = "{% url 'update_cart_item' 0 %}".slice(0, -2); // ตัด '0/' ส่วนท้ายออก
+        const checkReservationUrl = "{% url 'check_reservation' %}";
+        const confirmOrderUrl = "{% url 'confirm_order' %}";
+        const orderSummaryUrl = "{% url 'order_summary' %}";
+        // --- จบส่วนแก้ไข ---
+
+
         function showPopup(message, isError = false, callback = null) {
             const popup = document.getElementById("popup");
             const popupMessage = document.getElementById("popup-message");
@@ -60,7 +69,8 @@
         }
 
         function updateCartItem(itemId, action) {
-            fetch(`/cart/update/${itemId}/`, {
+            // --- ส่วนที่แก้ไข: ใช้ URL ที่สร้างไว้ ---
+            fetch(`${updateCartItemUrlBase}/${itemId}/`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -68,12 +78,9 @@
                 },
                 body: JSON.stringify({ action: action })
             })
-            .then(response => {
-                console.log(response);  // เช็คค่าที่ได้รับจากเซิร์ฟเวอร์
-                return response.json();
-            })
+            // --- จบส่วนแก้ไข ---
+            .then(response => response.json())
             .then(data => {
-                console.log(data);  // เช็คข้อมูลที่ส่งกลับจากเซิร์ฟเวอร์
                 if (data.success) {
                     location.reload(); // รีเฟรชหน้าเมื่ออัปเดตเสร็จ
                 } else {
@@ -86,62 +93,62 @@
             });
         }
 
-
         function checkReservationBeforeOrder() {
-        // ค้นหารายการสินค้าในตะกร้า
-        const cartItems = document.querySelectorAll(".cart-item");  // ตรวจสอบว่า .cart-item ถูกใช้ในตะกร้าหรือไม่
-        if (cartItems.length === 0) {
-            showPopup("ตะกร้าของคุณว่าง กรุณาเพิ่มสินค้าในตะกร้าก่อนทำการสั่งซื้อ", true);
-            return;  // หยุดการทำงาน
+            const cartItems = document.querySelectorAll(".cart-item");
+            if (cartItems.length === 0) {
+                showPopup("ตะกร้าของคุณว่าง กรุณาเพิ่มสินค้าในตะกร้าก่อนทำการสั่งซื้อ", true);
+                return;
+            }
+            
+            // --- ส่วนที่แก้ไข: ใช้ URL ที่สร้างไว้ ---
+            fetch(checkReservationUrl, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": "{{ csrf_token }}"
+                }
+            })
+            // --- จบส่วนแก้ไข ---
+            .then(response => response.json())
+            .then(data => {
+                if (data.has_reservation) {
+                    confirmOrder();
+                } else {
+                    showPopup("กรุณาจองโต๊ะก่อนยืนยันการสั่งอาหาร", true);
+                }
+            })
+            .catch(error => {
+                showPopup("เกิดข้อผิดพลาดในการเชื่อมต่อ", true);
+            });
         }
 
-        fetch('/cart/check-reservation/', {
-            method: "GET",
-            headers: {
-                "Content-Type": "application/json",
-                "X-CSRFToken": "{{ csrf_token }}"
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.has_reservation) {
-                confirmOrder();
-            } else {
-                showPopup("กรุณาจองโต๊ะก่อนยืนยันการสั่งอาหาร", true);
-            }
-        })
-        .catch(error => {
-            showPopup("เกิดข้อผิดพลาดในการเชื่อมต่อ", true);
-        });
-    }
-
-
         function confirmOrder() {
-            fetch('/cart/confirm-order/', {
+            // --- ส่วนที่แก้ไข: ใช้ URL ที่สร้างไว้ ---
+            fetch(confirmOrderUrl, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     "X-CSRFToken": "{{ csrf_token }}"
                 }
             })
+            // --- จบส่วนแก้ไข ---
             .then(response => response.json())
             .then(data => {
-                console.log(data);  // ดูข้อมูลที่ได้รับจากเซิร์ฟเวอร์
                 if (data.success) {
                     showPopup("การสั่งซื้อสำเร็จ!", false, () => {
-                        window.location.href = '/order-summary/';
+                        // --- ส่วนที่แก้ไข: ใช้ URL ที่สร้างไว้ ---
+                        window.location.href = orderSummaryUrl;
+                        // --- จบส่วนแก้ไข ---
                     });
                 } else {
                     showPopup(data.error || "เกิดข้อผิดพลาด", true);
                 }
             })
             .catch(error => {
-                console.error("เกิดข้อผิดพลาดในการเชื่อมต่อ", error);  // จัดการข้อผิดพลาดจากการเชื่อมต่อ
+                console.error("เกิดข้อผิดพลาดในการเชื่อมต่อ", error);
                 showPopup("เกิดข้อผิดพลาดในการเชื่อมต่อ", true);
             });
         }
-
-
     </script>
 </head>
 
@@ -164,7 +171,6 @@
             <tbody>
                 {% for item in cart_items %}
                 <tr id="row-{{ item.id }}" class="cart-item">
-
                     <td class="border border-gray-300 px-4 py-2">{{ item.menu.food_name }}</td>
                     <td class="border border-gray-300 px-4 py-2 text-center">
                         <button onclick="decreaseQuantity({{ item.id }} , {{ item.quantity }})"
@@ -185,9 +191,6 @@
                             </span>
                         {% endif %}
                     </td>
-                    
-                    
-                    
                     <td class="border border-gray-300 px-4 py-2 text-center">
                         <button onclick="removeItem({{ item.id }})"
                             class="bg-red-500 text-white px-2 py-1 rounded">ลบ</button>
@@ -195,7 +198,6 @@
                 </tr>
                 {% endfor %}
             </tbody>
-            
         </table>
 
         <div class="mt-4">
@@ -203,17 +205,17 @@
         </div>
 
         <div class="mt-4 text-center">
-            <a href="/menu/" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+            <a href="{% url 'menu' %}" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
                 เพิ่มสินค้า
             </a>
-        </div>
+            </div>
         {% else %}
         <p class="text-center text-gray-500">ไม่มีสินค้าในตะกร้า</p>
         <div class="mt-4 text-center">
-            <a href="/menu/" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+            <a href="{% url 'menu' %}" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
                 เพิ่มสินค้า
             </a>
-        </div>
+            </div>
         {% endif %}
 
         <div class="mt-4 text-center">

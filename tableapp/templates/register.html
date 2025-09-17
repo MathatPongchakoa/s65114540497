@@ -92,14 +92,14 @@
         </form>
 
         <p class="text-center mt-6 text-lg">
-            Already have an account? <a href="/login/" class="text-orange-500 hover:underline">Login</a>
+            Already have an account? <a href="{% url 'login' %}" class="text-orange-500 hover:underline">Login</a>
         </p>
     </div>
     <div id="successModal" class="fixed inset-0 bg-gray-800 bg-opacity-50 hidden flex items-center justify-center">
         <div class="bg-white p-6 rounded-lg shadow-lg max-w-sm text-center">
             <h2 class="text-xl font-bold text-green-600">สมัครสมาชิกสำเร็จ</h2>
             <p id="successMessage" class="mt-2 text-gray-700"></p>
-            <a href="/login/" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded block w-full">เข้าสู่ระบบ</a>
+            <a href="{% url 'login' %}" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded block w-full">เข้าสู่ระบบ</a>
         </div>
     </div>
 

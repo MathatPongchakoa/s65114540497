@@ -10,22 +10,26 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
+import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# โหลดค่าจากไฟล์ .env
+load_dotenv(BASE_DIR / ".env")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-z7+xcwcx#x=2oz(5n1gjo5mr7^ussz!lk-lhjwdmsiod#g#wgv"
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-default-key-for-dev")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-
+ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
 
 # Application definition
@@ -37,15 +41,15 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    'django.contrib.humanize', 
     'tableapp',
     'django_browser_reload',
-    'django_celery_beat',
-    'django_dbml',
-    'django.contrib.humanize',
+    'django_cleanup.apps.CleanupConfig',
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware", # <-- 1. เพิ่ม WhiteNoise และวางไว้ตรงนี้
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -60,7 +64,7 @@ ROOT_URLCONF = "seniorproject.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / 'templates'],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -78,50 +82,17 @@ WSGI_APPLICATION = "seniorproject.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
-import os
-from dotenv import load_dotenv
-load_dotenv()
-SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'unsafe-secret-key')
-DEBUG = os.getenv('DJANGO_DEBUG', 'False') == 'True'
-def _csv(v, default=""):
-    return [x.strip() for x in (v or default).split(",") if x.strip()]
 
-ALLOWED_HOSTS = _csv(os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,10.80.21.37"))
-PATH_PREFIX = os.getenv('PATH_PREFIX', '') # อ่านค่า prefix จาก .env
-
-STATIC_URL = f'{PATH_PREFIX}/static/' # เพิ่ม prefix เข้าไปใน STATIC_URL
-STATICFILES_DIRS = [BASE_DIR / "static"]
-
-MEDIA_URL = f'{PATH_PREFIX}/media/' # เพิ่ม prefix เข้าไปใน MEDIA_URL
-MEDIA_ROOT = BASE_DIR / 'media'
-
-
-
-_public_port = os.getenv("PUBLIC_PORT", "10497")
-_csrf = []
-for h in ALLOWED_HOSTS:
-    _csrf += [f"http://{h}", f"https://{h}"]
-    if _public_port:
-        _csrf += [f"http://{h}:{_public_port}", f"https://{h}:{_public_port}"]
-CSRF_TRUSTED_ORIGINS = _csrf
-
-
-
-
-
-SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 DATABASES = {
-  'default': {
-    'ENGINE': 'django.db.backends.postgresql',
-    'NAME': os.getenv('POSTGRES_DB'),
-    'USER': os.getenv('POSTGRES_USER'),
-    'PASSWORD': os.getenv('POSTGRES_PASSWORD'),
-     'HOST': 'db',  # <— ตรงนี้สำคัญ
-    'PORT': os.getenv('POSTGRES_PORT', '5432'),
-  }
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("POSTGRES_DB"),
+        "USER": os.getenv("POSTGRES_USER"),
+        "PASSWORD": os.getenv("POSTGRES_PASSWORD"),
+        "HOST": os.getenv("DB_HOST"),
+        "PORT": os.getenv("POSTGRES_PORT"),
+    }
 }
-
-
 
 
 # Password validation
@@ -146,17 +117,39 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
 LANGUAGE_CODE = "TH-th"
-
 TIME_ZONE = 'Asia/Bangkok'
-
 USE_I18N = True
-
 USE_TZ = True
 
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.1/howto/static-files/
+# === 2. ส่วนสำคัญที่สุด: การตั้งค่า Static, Media และ Path Prefix ===
 
+# อ่านค่า Prefix จาก .env
+
+
+# ทำให้ Django รู้จัก Prefix และเติมให้ตอนสร้าง URL ทั้งหมดโดยอัตโนมัติ
+FORCE_SCRIPT_NAME = "/mathat497"
+
+# Static files (CSS, JavaScript, Images)
+STATIC_URL = '/static/'
+STATICFILES_DIRS = [BASE_DIR / "static"]
+STATIC_ROOT = BASE_DIR / "staticfiles" # <-- ที่เก็บไฟล์ตอน deploy
+
+# Media files
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# เพิ่มการตั้งค่า STORAGES สำหรับ WhiteNoise
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
+
+# === จบส่วนสำคัญ ===
 
 
 # Default primary key field type
@@ -169,27 +162,13 @@ PASSWORD_RESET_TIMEOUT = 86400  # 1 วัน
 
 
 # เพิ่มการตั้งค่าสำหรับการเข้าสู่ระบบ
-LOGIN_REDIRECT_URL = '/table-status/'  
-LOGOUT_REDIRECT_URL = '/'  
+LOGIN_REDIRECT_URL = '/table-status/'
+LOGOUT_REDIRECT_URL = '/'
 AUTH_USER_MODEL = 'tableapp.CustomUser'
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'  # หรือโฮสต์ SMTP ที่คุณใช้
-EMAIL_PORT = 587  # ใช้ 587 สำหรับ TLS หรือ 465 สำหรับ SSL
-EMAIL_USE_TLS = True  # ถ้าใช้ TLS
-EMAIL_HOST_USER = 'mathat.po.65@ubu.ac.th'  # อีเมลผู้ส่ง
-EMAIL_HOST_PASSWORD = 'hnos oqff kuep voar'  # รหัสผ่านของอีเมล
-DEFAULT_FROM_EMAIL = 'mathat.po.65@ubu.ac.th'
-
-
-# Celery settings
-CELERY_BROKER_URL = 'redis://localhost:6379/0'
-CELERY_ACCEPT_CONTENT = ['json']
-CELERY_TASK_SERIALIZER = 'json'
-
-
-
-
-
-
-
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'mathat.po.65@ubu.ac.th'
+EMAIL_HOST_PASSWORD = 'hnos oqff kuep voar' # ควรเก็บเป็น Environment Variable

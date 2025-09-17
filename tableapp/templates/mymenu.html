@@ -1,6 +1,4 @@
-{% load custom_filters %} <!-- โหลด custom filters -->
-
-<!DOCTYPE html>
+{% load custom_filters %} <!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -17,9 +15,12 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         function addToCart(foodId) {
+            // --- ส่วนที่แก้ไข: สร้าง URL สำหรับ fetch ---
+            const addToCartUrl = "{% url 'add_to_cart' %}";
             const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
-            fetch('/cart/add/', {
+            // --- ส่วนที่แก้ไข: ใช้ URL ที่สร้างไว้ ---
+            fetch(addToCartUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -27,6 +28,7 @@
                 },
                 body: JSON.stringify({ food_id: foodId }),
             })
+            // --- จบส่วนแก้ไข ---
                 .then((response) => response.json())
                 .then((data) => {
                     if (data.success) {
@@ -44,67 +46,62 @@
 </head>
 
 <body class="bg-gray-100">
-    <!-- Navigation Bar -->
     <nav class="bg-gradient-to-r from-red-600 to-red-500 shadow-lg">
         <div class="max-w-7xl mx-auto px-6">
             <div class="flex justify-between items-center h-16">
-                <!-- โลโก้ -->
-                <a href="#" class="text-3xl font-bold text-white tracking-wide 
-                                 border border-yellow-300 px-4 py-1 rounded-lg
-                                 shadow-lg hover:shadow-2xl hover:scale-105 
-                                 transition-all duration-300 ease-in-out">
+                <a href="{% url 'table_status' %}" class="text-3xl font-bold text-white tracking-wide 
+                                     border border-yellow-300 px-4 py-1 rounded-lg
+                                     shadow-lg hover:shadow-2xl hover:scale-105 
+                                     transition-all duration-300 ease-in-out">
                     Just<span class="text-yellow-300">Food</span>
                 </a>
     
-                <!-- เมนู -->
                 <div class="flex space-x-4 items-center">
-                    <a href="/" class="text-white text-lg font-medium 
-                                      border border-yellow-300 px-3 py-1 rounded-lg
-                                      shadow-lg hover:shadow-2xl hover:scale-105 
-                                      transition-all duration-300 ease-in-out">
+                    <a href="{% url 'table_status' %}" class="text-white text-lg font-medium 
+                                       border border-yellow-300 px-3 py-1 rounded-lg
+                                       shadow-lg hover:shadow-2xl hover:scale-105 
+                                       transition-all duration-300 ease-in-out">
                         Table
                     </a>
-                    <a href="/menu/" class="text-white text-lg font-medium 
-                                         border border-yellow-300 px-3 py-1 rounded-lg
-                                         shadow-lg hover:shadow-2xl hover:scale-105 
-                                         transition-all duration-300 ease-in-out">
+                    <a href="{% url 'menu' %}" class="text-white text-lg font-medium 
+                                           border border-yellow-300 px-3 py-1 rounded-lg
+                                           shadow-lg hover:shadow-2xl hover:scale-105 
+                                           transition-all duration-300 ease-in-out">
                         Menu
                     </a>
     
-                    <!-- ไอคอนตะกร้าสินค้า -->
-                    <a href="/cart/" class="text-white flex items-center 
-                                        border border-yellow-300 px-3 py-1 rounded-lg
-                                        shadow-lg hover:shadow-2xl hover:scale-105 
-                                        transition-all duration-300 ease-in-out">
+                    <a href="{% url 'cart' %}" class="text-white flex items-center 
+                                           border border-yellow-300 px-3 py-1 rounded-lg
+                                           shadow-lg hover:shadow-2xl hover:scale-105 
+                                           transition-all duration-300 ease-in-out">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" 
                              stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" 
-                                d="M3 3h2l.4 2m1.6 10h9.2m4.8-8H6.4M5.4 5L7.6 16h9.8l1.2-6m-5.2 6v2a2 2 0 01-2 2H9a2 2 0 01-2-2v-2">
+                                  d="M3 3h2l.4 2m1.6 10h9.2m4.8-8H6.4M5.4 5L7.6 16h9.8l1.2-6m-5.2 6v2a2 2 0 01-2 2H9a2 2 0 01-2-2v-2">
                             </path>
                         </svg>
                     </a>
     
-                    <a href="/my-bookings/" class="text-white text-lg font-medium 
-                                                 border border-yellow-300 px-3 py-1 rounded-lg
-                                                 shadow-lg hover:shadow-2xl hover:scale-105 
-                                                 transition-all duration-300 ease-in-out">
+                    <a href="{% url 'my_bookings' %}" class="text-white text-lg font-medium 
+                                                   border border-yellow-300 px-3 py-1 rounded-lg
+                                                   shadow-lg hover:shadow-2xl hover:scale-105 
+                                                   transition-all duration-300 ease-in-out">
                         My Bookings
                     </a>
     
                     {% if user.is_authenticated %}
-                    <!-- Username & Logout -->
                     <div class="flex items-center space-x-4">
                         <span class="text-yellow-300 font-semibold border border-yellow-300 px-3 py-1 rounded-lg
-                                     shadow-lg hover:shadow-2xl hover:scale-105 
-                                     transition-all duration-300 ease-in-out">
+                                       shadow-lg hover:shadow-2xl hover:scale-105 
+                                       transition-all duration-300 ease-in-out">
                             Hello, {{ user.username }}
                         </span>
                         <form method="POST" action="{% url 'logout' %}" class="inline">
                             {% csrf_token %}
                             <button type="submit" class="text-white flex items-center 
-                                                          border border-yellow-300 px-3 py-1 rounded-lg
-                                                          shadow-lg hover:shadow-2xl hover:scale-105 
-                                                          transition-all duration-300 ease-in-out">
+                                                         border border-yellow-300 px-3 py-1 rounded-lg
+                                                         shadow-lg hover:shadow-2xl hover:scale-105 
+                                                         transition-all duration-300 ease-in-out">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" 
                                      fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" 
                                      stroke-linejoin="round" class="lucide lucide-log-out">
@@ -116,11 +113,10 @@
                         </form>
                     </div>
                     {% else %}
-                    <!-- ปุ่ม Login -->
-                    <a href="/login/" class="text-white flex items-center 
-                                             border border-yellow-300 px-3 py-1 rounded-lg
-                                             shadow-lg hover:shadow-2xl hover:scale-105 
-                                             transition-all duration-300 ease-in-out">
+                    <a href="{% url 'login' %}" class="text-white flex items-center 
+                                              border border-yellow-300 px-3 py-1 rounded-lg
+                                              shadow-lg hover:shadow-2xl hover:scale-105 
+                                              transition-all duration-300 ease-in-out">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" 
                              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" 
                              stroke-linejoin="round" class="lucide lucide-log-in">
@@ -130,33 +126,30 @@
                         </svg>
                     </a>
                     {% endif %}
-                </div>
+                    </div>
             </div>
         </div>
-    </nav>    
+    </nav>     
 
     <h1 class="text-center text-3xl font-bold mb-8 mt-6">เมนูอาหาร</h1>
 
-    <!-- Navigation for categories -->
     <div class="text-center my-4">
-        <a href="/menu/" class="bg-yellow-500 text-black px-4 py-2 rounded mx-2">ทั้งหมด</a>
+        <a href="{% url 'menu' %}" class="bg-yellow-500 text-black px-4 py-2 rounded mx-2">ทั้งหมด</a>
         {% for category in categories %}
-        <a href="/menu/?category={{ category.name }}" class="bg-yellow-200 px-4 py-2 rounded mx-2">{{ category.name }}</a>
+        <a href="{% url 'menu' %}?category={{ category.name }}" class="bg-yellow-200 px-4 py-2 rounded mx-2">{{ category.name }}</a>
         {% endfor %}
-    </div>
+        </div>
 
-    <!-- แสดงเมนู -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-7xl mx-auto">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-7xl mx-auto p-4">
         {% for menu in menus %}
         <div class="border p-4 rounded-lg shadow bg-white">
-            <img src="{{ menu.image_url }}" alt="{{ menu.food_name }}" class="w-full h-32 object-cover rounded">
+            <img src="{{ menu.image.url }}" alt="{{ menu.food_name }}" class="w-full h-32 object-cover rounded">
             <div class="mt-4">
                 <h2 class="text-lg font-bold">{{ menu.food_name }}</h2>
                 <p class="text-sm text-gray-500">{{ menu.price|floatformat:2 }} บาท</p>
                 <p class="text-sm text-gray-400">ประเภท: {{ menu.category.name }}</p>
-                <!-- ปุ่มเพิ่มสินค้า -->
                 <button onclick="addToCart({{ menu.id }})"
-                    class="bg-green-500 text-white rounded-full w-8 h-8 flex justify-center items-center mt-2">+</button>
+                    class="bg-green-500 text-white rounded-full w-8 h-8 flex justify-center items-center mt-2 hover:bg-green-600 transition-transform transform hover:scale-110">+</button>
             </div>
         </div>
         {% endfor %}

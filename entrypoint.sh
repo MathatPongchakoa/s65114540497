@@ -24,6 +24,11 @@ echo "✅ Database is ready."
 # migrate
 python manage.py migrate --noinput
 
+# --- เพิ่มบรรทัดนี้เข้าไป ---
+# collect static files
+python manage.py collectstatic --noinput
+# --- จบส่วนที่เพิ่ม ---
+
 # สร้าง superuser ถ้ายังไม่มี
 # สร้าง superuser ถ้ายังไม่มี (ใช้ manage.py shell เพื่อให้ settings ถูกตั้งให้อัตโนมัติ)
 python manage.py shell -c "
@@ -40,6 +45,3 @@ print('done')
 
 # run server
 gunicorn --bind 0.0.0.0:8000 seniorproject.wsgi:application
-
-
-
