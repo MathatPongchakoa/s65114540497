@@ -62,7 +62,7 @@
                         <td class="border border-gray-300 px-4 py-2 text-center">{{ booking.booking_time|time:"H:i" }}</td>
                         <td class="border border-gray-300 px-4 py-2 text-center">{{ booking.booking_end_time|time:"H:i" }}</td>
                         <td class="border border-gray-300 px-4 py-2 text-center">
-                            <form method="POST" action="/cancel-booking/" id="cancel-form-{{ booking.id }}">
+                            <form method="POST" action="{% url 'cancel_booking' %}" id="cancel-form-{{ booking.id }}">
                                 {% csrf_token %}
                                 <input type="hidden" name="booking_id" value="{{ booking.id }}">
                                 <button type="button" onclick="showPopup({{ booking.id }})"
@@ -80,7 +80,7 @@
             {% endif %}
 
             <div class="text-center mt-6">
-                <a href="/" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                <a href="{% url 'table_status' %}" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
                     กลับหน้าหลัก
                 </a>
             </div>
