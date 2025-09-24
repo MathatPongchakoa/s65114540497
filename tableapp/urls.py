@@ -38,7 +38,9 @@ urlpatterns = [
     path('edit-zone/<int:zone_id>/', edit_zone_view, name='edit_zone'),  # แก้ไขโซน
     path('delete-zone/<int:zone_id>/', delete_zone_view, name='delete_zone'), 
     path('menu-management/edit/<int:menu_id>/', edit_menu_view, name='edit_menu'),
-    path('menu-management/delete/<int:menu_id>/', delete_menu, name='edit_menu'),
+
+    #              เปลี่ยนจาก 'edit_menu' เป็น 'delete_menu' VVVVVVVV
+    path('menu-management/delete/<int:menu_id>/', delete_menu, name='delete_menu'),
 
     path('menu/<int:menu_id>/delete/', delete_menu, name='delete_menu'),
     path('cart/check-reservation/', check_reservation, name='check_reservation'),

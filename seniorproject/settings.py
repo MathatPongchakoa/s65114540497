@@ -128,7 +128,7 @@ USE_TZ = True
 
 
 # ทำให้ Django รู้จัก Prefix และเติมให้ตอนสร้าง URL ทั้งหมดโดยอัตโนมัติ
-FORCE_SCRIPT_NAME = "/mathat497"
+# FORCE_SCRIPT_NAME = "/s65114540497"
 
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'
@@ -163,7 +163,7 @@ PASSWORD_RESET_TIMEOUT = 86400  # 1 วัน
 
 # เพิ่มการตั้งค่าสำหรับการเข้าสู่ระบบ
 LOGIN_REDIRECT_URL = '/table-status/'
-LOGOUT_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = 'login'
 AUTH_USER_MODEL = 'tableapp.CustomUser'
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

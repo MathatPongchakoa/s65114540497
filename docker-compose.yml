@@ -28,29 +28,22 @@ services:
       - default
       - traefik-public
     labels:
-      # --- การตั้งค่าหลักสำหรับ Traefik ---
       - "traefik.enable=true"
+      
+      # --- 1. Router (ไม่มี middleware แล้ว) ---
+      # กำหนด Rule ให้ตรงกับ prefix ที่ตั้งใน urls.py
+      - "traefik.http.routers.s65114540497-app.rule=PathPrefix(`/s65114540497`)"
+      - "traefik.http.routers.s65114540497-app.service=s65114540497-service"
+      - "traefik.http.routers.s65114540497-app.entrypoints=web"
+
+      # --- 2. Service ปลายทาง ---
+      - "traefik.http.services.s65114540497-service.loadbalancer.server.port=8000"
       - "traefik.docker.network=traefik-public"
-
-      # --- 1. ตั้งค่า Router: กำหนดเงื่อนไขการรับ request ---
-      - "traefik.http.routers.mathat497-web-router.rule=PathPrefix(`/mathat497`)"
-      - "traefik.http.routers.mathat497-web-router.entrypoints=web"
-      # ระบุให้ Router นี้ใช้ Middleware ที่เราจะสร้างในข้อ 2
-      - "traefik.http.routers.mathat497-web-router.middlewares=mathat497-stripprefix-middleware@docker"
-
-      # --- 2. ตั้งค่า Middleware: แปลง request ก่อนส่งต่อ ---
-      # สร้าง Middleware เพื่อ "ตัด" /wuttinan596 ออกจาก URL
-      - "traefik.http.middlewares.mathat497-stripprefix-middleware.stripprefix.prefixes=/mathat497"
-
-      # --- 3. ตั้งค่า Service: กำหนดปลายทางของ request ---
-      # ระบุให้ Traefik ส่ง request ไปยัง port 8000 ของ container นี้
-      - "traefik.http.services.mathat497-web-service.loadbalancer.server.port=8000"
 
 volumes:
   pgdata:
 
 networks:
   default:
-    driver: bridge
   traefik-public:
     external: true

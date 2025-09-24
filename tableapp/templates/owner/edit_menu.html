@@ -1,98 +1,57 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>แก้ไขเมนู</title>
+    <title>แก้ไขเมนู: {{ menu.food_name }}</title>
     <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body {
-            font-family: 'Chakra Petch', sans-serif;
-        }
+        body { font-family: 'Chakra Petch', sans-serif; }
     </style>
 </head>
-
 <body class="bg-gray-100">
     {% include 'owner/admin_nav.html' %}
     
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <div class="max-w-4xl mx-auto mt-10 bg-white p-6 rounded shadow-lg">
+        <h1 class="text-2xl font-bold mb-6 text-center">แก้ไขเมนู: <span class="text-red-600">{{ menu.food_name }}</span></h1>
 
-    <!-- ✅ Popup แจ้งเตือนเมื่อแก้ไขสำเร็จ -->
-    <div id="successPopup" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 hidden">
-        <div class="bg-white p-6 rounded-lg shadow-lg text-center">
-            <h2 class="text-lg font-bold text-green-600">✅ แก้ไขเมนูสำเร็จ!</h2>
-            <button onclick="redirectToMenuManagement()" 
-                    class="mt-4 px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">
-                ตกลง
-            </button>
+        {% if success %}
+        <div id="successPopup" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50">
+            <div class="bg-white p-6 rounded-lg shadow-lg text-center">
+                <h2 class="text-lg font-bold text-green-600">✅ บันทึกสำเร็จ!</h2>
+                <p class="text-gray-700 mt-2">ข้อมูลเมนูถูกอัปเดตเรียบร้อยแล้ว</p>
+                <a href="{% url 'menu_management' %}" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">กลับไปหน้าจัดการเมนู</a>
+            </div>
         </div>
-    </div>
+        {% endif %}
 
-    <!-- Form Container -->
-    <div class="max-w-4xl mx-auto bg-white shadow-md rounded-lg mt-10 p-8">
-        <h2 class="text-2xl font-bold text-center mb-6">แก้ไขเมนูอาหาร</h2>
         <form method="POST" enctype="multipart/form-data">
             {% csrf_token %}
-            
-            <div>
-                <label for="food_name" class="block text-gray-700 font-medium mb-2">ชื่อเมนู</label>
-                <input type="text" id="food_name" name="food_name" value="{{ menu.food_name }}" 
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500" required>
+            <div class="mb-4">
+                <label for="food_name" class="block text-gray-700 font-bold mb-2">ชื่ออาหาร:</label>
+                <input type="text" name="food_name" id="food_name" value="{{ menu.food_name }}" class="w-full border border-gray-300 rounded px-4 py-2">
             </div>
-
-            <div>
-                <label for="price" class="block text-gray-700 font-medium mb-2">ราคา</label>
-                <input type="number" id="price" name="price" value="{{ menu.price }}" 
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500" required>
+            <div class="mb-4">
+                <label for="price" class="block text-gray-700 font-bold mb-2">ราคา:</label>
+                <input type="number" name="price" id="price" value="{{ menu.price }}" class="w-full border border-gray-300 rounded px-4 py-2">
             </div>
-
-            <div>
-                <label for="category_name" class="block text-gray-700 font-medium mb-2">หมวดหมู่</label>
-                <input type="text" id="category_name" name="category_name" 
-                       value="{{ menu.category.name }}" 
-                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500" required>
-                <p class="text-sm text-gray-500 mt-1">กรุณากรอกหมวดหมู่ใหม่ หรือใช้หมวดหมู่เดิม</p>
+            <div class="mb-4">
+                <label for="category_name" class="block text-gray-700 font-bold mb-2">หมวดหมู่:</label>
+                <input type="text" name="category_name" id="category_name" value="{{ menu.category.name }}" class="w-full border border-gray-300 rounded px-4 py-2">
             </div>
-
-            <div>
-                <label for="image" class="block text-gray-700 font-medium mb-2">รูปภาพ</label>
-                <input type="file" id="image" name="image" 
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500">
+            <div class="mb-4">
+                <label for="image" class="block text-gray-700 font-bold mb-2">เปลี่ยนรูปภาพ (ถ้าต้องการ):</label>
                 {% if menu.image %}
-                <div class="mt-4">
-                    <img src="{{ menu.image.url }}" alt="{{ menu.food_name }}" class="w-32 h-32 object-cover rounded-lg">
-                </div>
+                    <p class="text-sm text-gray-600 mb-2">รูปภาพปัจจุบัน: <a href="{{ menu.image.url }}" target="_blank" class="text-blue-500 underline">{{ menu.image.name }}</a></p>
                 {% endif %}
+                <input type="file" name="image" id="image" class="w-full border border-gray-300 rounded px-4 py-2">
             </div>
-
-            <div class="flex justify-end space-x-4">
-                <a href="{% url 'menu_management' %}" 
-                   class="bg-gray-300 text-gray-700 font-bold py-2 px-6 rounded-lg hover:bg-gray-400">
-                    ย้อนกลับ
-                </a>
-                <button type="submit" 
-                        class="bg-red-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-red-600 focus:ring-2 focus:ring-red-500">
-                    บันทึก
-                </button>
+            <div class="text-center mt-6">
+                <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">บันทึกการเปลี่ยนแปลง</button>
+                <a href="{% url 'menu_management' %}" class="ml-4 text-blue-500 hover:underline">ย้อนกลับ</a>
             </div>
         </form>
     </div>
-
-    <script>
-        // ✅ เช็คว่ามีตัวแปร success จาก views.py ไหม
-        document.addEventListener("DOMContentLoaded", function () {
-            {% if success %}
-                document.getElementById("successPopup").classList.remove("hidden");
-            {% endif %}
-        });
-
-        // ✅ ฟังก์ชัน Redirect หลังจากกด "ตกลง"
-        function redirectToMenuManagement() {
-            window.location.href = "{% url 'menu_management' %}";
-        }
-    </script>
-
 </body>
 </html>

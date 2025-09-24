@@ -37,6 +37,7 @@ from datetime import datetime
 from django.shortcuts import render
 from django.utils.timezone import make_aware
 from .models import Order, OrderItem
+from django.http import HttpResponseRedirect
 
 
 def is_staff(user):
@@ -298,7 +299,14 @@ def login_view(request):
 @never_cache
 def logout_view(request):
     logout(request)
-    return redirect('/')
+
+    # --- ส่วนที่แก้ไข ---
+    # อ่านค่า prefix จาก settings.py โดยตรง
+    prefix = getattr(settings, 'FORCE_SCRIPT_NAME', '')
+
+    # สร้าง URL สำหรับ redirect ด้วยตัวเองและสั่งให้ไปที่หน้านั้นทันที
+    # ซึ่งจะกลายเป็น /mathat497/login/
+    return HttpResponseRedirect(f'{prefix}/login/')
 
 def register_view(request):
     if request.method == "POST":
@@ -679,7 +687,8 @@ def table_management_view(request):
 
     return render(request, 'owner/table_management.html', {
         'table_data': table_data,
-        'zones': zones
+        'zones': zones,
+        'is_dragging': False,
     })
 
 @csrf_exempt
